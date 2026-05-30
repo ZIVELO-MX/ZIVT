@@ -77,6 +77,7 @@
 3. Crear nueva tarea → aparece en la columna correcta al cerrar el modal
 4. Editar una tarea (título, tag, fecha) → cambios persisten al recargar
 5. Subtareas marcadas como done → estado persiste en DB (jsonb)
+6. Tarea puede marcarse como **Bloqueada** (col = `blocked`) → columna visual diferenciada en el tablero, persiste en DB
 
 ---
 
@@ -102,6 +103,25 @@
 2. Admin invita un nuevo miembro → email de Supabase Auth enviado, usuario aparece como "Invitado"
 3. Admin cambia rol/permiso de un miembro → cambio en DB, visible en la misma vista
 4. Admin suspende un miembro → estado cambia a "Suspendido" y persiste
+
+#### Control de acceso por rol (confidencialidad financiera)
+> **Regla**: Solo los roles `founder` y `admin` pueden acceder a información financiera y de clientes.
+
+| Sección / dato | founder | admin | editor | viewer |
+|----------------|:-------:|:-----:|:------:|:------:|
+| Vista **Clientes** (completa) | ✅ | ✅ | ❌ | ❌ |
+| KPI **MRR** en Dashboard | ✅ | ✅ | ❌ | ❌ |
+| KPI **Clientes activos** en Dashboard | ✅ | ✅ | ❌ | ❌ |
+| Gráfica de ingresos / analytics financieras | ✅ | ✅ | ❌ | ❌ |
+| Feed de actividad (eventos de clientes) | ✅ | ✅ | ❌ | ❌ |
+| Proyectos, Kanban, Usuarios, Aprendizaje | ✅ | ✅ | ✅ | ✅ |
+
+**Implementación esperada (Phase 7 + Phase 8):**
+- La tabla `profiles` en Supabase incluye el campo `permission` con valores: `founder`, `admin`, `editor`, `viewer`
+- RLS en la tabla `clients` permite SELECT solo a `founder` y `admin`
+- En el frontend, un hook `useRole()` expone el rol del usuario autenticado
+- Los componentes `Clients`, `StatCard MRR`, `StatCard Clientes activos` y las analytics financieras del Dashboard se renderizan condicionalmente: si el rol no es `founder` ni `admin`, se muestra un placeholder de acceso restringido en lugar del contenido
+- El sidebar no muestra el ítem **Clientes** a roles `editor` / `viewer`
 
 ---
 

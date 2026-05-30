@@ -1,0 +1,189 @@
+'use client'
+
+import { useEffect } from 'react'
+import { TAG_STYLES } from '@/lib/data'
+import { Ic } from '@/components/icons'
+
+export function Avatar({ user, size = 28, ring = false }: any) {
+  if (!user) return null
+  return (
+    <div
+      className={`inline-flex items-center justify-center rounded-full font-semibold text-white select-none ${ring ? 'ring-2 ring-white dark:ring-[#1A1A18]' : ''}`}
+      style={{ width: size, height: size, background: user.color, fontSize: size * 0.4 }}
+      title={user.name}
+    >
+      {user.initials}
+    </div>
+  )
+}
+
+export function AvatarStack({ users, max = 4, size = 26 }: any) {
+  const visible = users.slice(0, max)
+  const extra = users.length - visible.length
+  return (
+    <div className="flex -space-x-2">
+      {visible.map(u => <Avatar key={u.id} user={u} size={size} ring />)}
+      {extra > 0 && (
+        <div
+          className="inline-flex items-center justify-center rounded-full bg-soft text-carbon font-semibold ring-2 ring-white dark:ring-[#1A1A18]"
+          style={{ width: size, height: size, fontSize: size * 0.4 }}
+        >
+          +{extra}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function Badge({ children, className = '' }: any) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tracking-tight ${className}`}>
+      {children}
+    </span>
+  )
+}
+
+export function Button({ children, variant = 'primary', size = 'md', className = '', ...rest }: any) {
+  const sizes = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-[14px]', lg: 'h-12 px-5 text-[15px]' }
+  const variants = {
+    primary: 'bg-zred text-white hover:shadow-red hover:-translate-y-px',
+    secondary: 'bg-white text-carbon border border-line hover:border-zred hover:text-zred',
+    ghost: 'bg-transparent text-carbon hover:bg-soft',
+    dark: 'bg-carbon text-white hover:bg-black',
+    danger: 'bg-white text-zred border border-tint hover:bg-tint',
+  }
+  return (
+    <button
+      {...rest}
+      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ${sizes[size]} ${variants[variant]} ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function IconButton({ children, className = '', ...rest }: any) {
+  return (
+    <button
+      {...rest}
+      className={`inline-flex items-center justify-center w-9 h-9 rounded-full border border-line bg-white text-carbon hover:border-zred hover:text-zred transition-colors ${className}`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function Card({ children, className = '', hover = false, ...rest }: any) {
+  return (
+    <div {...rest} className={`bg-white border border-line rounded-lg ${hover ? 'transition-all hover:-translate-y-0.5 hover:shadow-card hover:border-zred/30' : ''} ${className}`}>
+      {children}
+    </div>
+  )
+}
+
+export function Input({ label, hint, error, className = '', ...rest }: any) {
+  return (
+    <label className="block">
+      {label && <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">{label}</span>}
+      <input
+        {...rest}
+        className={`w-full h-11 px-4 rounded-md border border-line bg-white text-[14px] placeholder:text-muted/70 transition-all ${className}`}
+      />
+      {hint && !error && <span className="block text-[12px] text-muted mt-1">{hint}</span>}
+      {error && <span className="block text-[12px] text-zred mt-1 font-medium">{error}</span>}
+    </label>
+  )
+}
+
+export function Textarea({ label, ...rest }: any) {
+  return (
+    <label className="block">
+      {label && <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">{label}</span>}
+      <textarea
+        {...rest}
+        className="w-full px-4 py-3 rounded-md border border-line bg-white text-[14px] placeholder:text-muted/70 transition-all resize-none"
+      />
+    </label>
+  )
+}
+
+export function Select({ label, options, ...rest }: any) {
+  return (
+    <label className="block">
+      {label && <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">{label}</span>}
+      <select
+        {...rest}
+        className="w-full h-11 px-4 rounded-md border border-line bg-white text-[14px] transition-all appearance-none"
+        style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%231D1D1B\' stroke-width=\'2\'%3E%3Cpath d=\'m6 9 6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center' }}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  )
+}
+
+export function Drawer({ open, onClose, title, children, footer, width = 460 }: any) {
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    if (open) window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-carbon/30 fade-in" onClick={onClose} />
+      <div
+        className="absolute right-0 top-0 h-full bg-white border-l border-line shadow-pop flex flex-col"
+        style={{ width, animation: 'drawer-in 280ms cubic-bezier(.2,.8,.2,1)' }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
+          <h3 className="font-semibold text-[16px]">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+            <Ic.X width="18" height="18" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-thin">{children}</div>
+        {footer && <div className="px-6 py-4 border-t border-line2 bg-white">{footer}</div>}
+      </div>
+    </div>
+  )
+}
+
+export function Modal({ open, onClose, title, children, footer, width = 520 }: any) {
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    if (open) window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-carbon/30 fade-in" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-pop border border-line2 pop-in flex flex-col max-h-[88vh]" style={{ width }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
+          <h3 className="font-semibold text-[16px]">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+            <Ic.X width="18" height="18" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto scroll-thin px-6 py-5">{children}</div>
+        {footer && <div className="px-6 py-4 border-t border-line2 flex justify-end gap-2">{footer}</div>}
+      </div>
+    </div>
+  )
+}
+
+export function ProgressBar({ value, color = '#D72228' }: any) {
+  return (
+    <div className="h-1.5 bg-soft rounded-full overflow-hidden">
+      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${value}%`, background: color }} />
+    </div>
+  )
+}
+
+export function Tag({ tag }: any) {
+  const s = TAG_STYLES[tag] || { label: tag, cls: 'bg-soft text-carbon' }
+  return <Badge className={s.cls}>{s.label}</Badge>
+}

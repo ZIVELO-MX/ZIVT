@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Next.js
+app-next/.next/
+app-next/out/
+*.tsbuildinfo
+
+# Environment — NUNCA versionar credenciales
+.env.local
+.env.*.local
+app-next/.env.local
+app-next/.env.*.local
+
+# Uploads y archivos generados
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+*.swp
+
+# Claude local config
+.claude/
+
+# Archivos de handoff / diseño (no son código del proyecto)
+*.zip
+handoff_extracted/
+Login.html
+Panel de Control.html
+src/
+assets/
+*.png
