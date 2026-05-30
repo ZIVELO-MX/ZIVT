@@ -145,3 +145,32 @@ html[data-density="compact"] header.sticky > div { height: 56px !important; }
 html[data-density="compact"] aside nav button.group { height: 34px !important; font-size: 13px !important; }
 html[data-density="relaxed"] header.sticky > div { height: 84px !important; }
 html[data-density="relaxed"] aside nav button.group { height: 46px !important; }
+
+/* Sidebar mobile drawer — transform on mobile, width on desktop */
+.sidebar-drawer {
+  transition: transform 300ms var(--ease-drawer);
+}
+@media (min-width: 768px) {
+  .sidebar-drawer {
+    transition: width 300ms var(--ease-out);
+    transform: translateX(0) !important;
+  }
+}
+
+/* Hide native scrollbar on mobile scroll containers */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Floating card animations — login right panel */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+.float-1 { animation: float 5s   ease-in-out infinite; }
+.float-2 { animation: float 6s   ease-in-out infinite 1s; }
+.float-3 { animation: float 4.5s ease-in-out infinite 2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .float-1, .float-2, .float-3 { animation: none; }
+  .sidebar-drawer { transition: none !important; }
+}

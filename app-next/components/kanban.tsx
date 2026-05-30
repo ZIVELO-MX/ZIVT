@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useReducer } from 'react'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag } from './ui'
 import { CustomDatePicker as DatePicker, CustomSelect } from './controls'
@@ -14,6 +14,9 @@ const PROG_COLOR: Record<string, string> = {
   progress: '#E0B84A',
   done:     '#3CB371',
 }
+const COL_COLORS: Record<string, string> = {
+  todo: '#6B6B6B', progress: '#3A47B5', done: '#1E6B3C',
+}
 const PROG_STATUS = [
   { value: 'todo',     label: 'Pendiente',  color: '#9B9B98' },
   { value: 'progress', label: 'En curso',   color: '#E0B84A' },
@@ -24,7 +27,7 @@ function MemberProgressStack({ members, progress }: { members: any[]; progress: 
   const doneCount = members.filter(u => progress?.[u.id] === 'done').length;
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex items-center -space-x-1.5">
+      <div className="flex items-center [&>*+*]:-ml-1.5">
         {members.slice(0, 3).map(u => (
           <div key={u.id} style={{ display: 'inline-flex', borderRadius: '50%', border: `2px solid ${PROG_COLOR[progress?.[u.id] || 'todo']}` }}>
             <Avatar user={u} size={22} />
@@ -45,7 +48,7 @@ function PriorityDot({ priority }: any) {
   const p = PRIORITY[priority];
   return (
     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted">
-      <span className={`w-1.5 h-1.5 rounded-full ${p.dot}`} />
+      <span className={`size-1.5 rounded-full ${p.dot}`} />
       {p.label}
     </span>
   );
@@ -53,23 +56,24 @@ function PriorityDot({ priority }: any) {
 
 function TaskCard({ task, projects, onClick, onDragStart, onDragEnd, dragging }: any) {
   const project = projects.find(p => p.id === task.project);
-  const team = task.assignee.map(id => TEAM.find(u => u.id === id)).filter(Boolean);
+  const team = task.assignee.flatMap(id => { const u = TEAM.find(m => m.id === id); return u ? [u] : []; });
   const days = daysUntil(task.due);
   const overdue = task.due && days < 0 && task.col !== 'done';
   const soon = task.due && days >= 0 && days <= 3 && task.col !== 'done';
   const subDone = task.subtasks.filter(s => s.d).length;
 
   return (
-    <div
+    <button
+      type="button"
       draggable
       onDragStart={(e) => onDragStart(e, task)}
       onDragEnd={onDragEnd}
       onClick={() => onClick(task)}
-      className={`group bg-white border border-line2 rounded-md p-3.5 cursor-grab active:cursor-grabbing hover:border-zred/30 hover:shadow-soft transition-all ${dragging ? 'dragging' : ''}`}
+      className={`group bg-white border border-line2 rounded-md p-3.5 cursor-grab active:cursor-grabbing hover:border-zred/30 hover:shadow-soft transition-all text-left w-full ${dragging ? 'dragging' : ''}`}
     >
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: project?.accent || '#1D1D1B' }} />
+          <span className="size-1.5 rounded-full shrink-0" style={{ background: project?.accent || '#1D1D1B' }} />
           <span className="text-[11px] font-semibold text-muted truncate">{project?.name}</span>
         </div>
         <Tag tag={task.tag} />
@@ -110,26 +114,22 @@ function TaskCard({ task, projects, onClick, onDragStart, onDragEnd, dragging }:
           <MemberProgressStack members={team} progress={task.progress} />
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
 function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(col.title);
+  const [titleDraft, setTitleDraft] = useState('');
   const menuRef = useRef(null);
-  const COL_COLORS = {
-    backlog:  '#6B6B6B',
-    todo:     '#1D1D1B',
-    progress: '#D72228',
-    review:   '#E0A800',
-    done:     '#1E6B3C',
-  };
-  useEffect(() => setTitleDraft(col.title), [col.title]);
+  const menuOpenRef = useRef(false);
+
+  useEffect(() => { menuOpenRef.current = menuOpen; }, [menuOpen]);
+
   useEffect(() => {
     function onDown(e) {
-      if (!menuOpen) return;
+      if (!menuOpenRef.current) return;
       if (menuRef.current?.contains(e.target)) return;
       setMenuOpen(false);
     }
@@ -145,7 +145,7 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [menuOpen]);
+  }, []);
 
   function saveTitle() {
     const next = titleDraft.trim();
@@ -163,7 +163,7 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{background: COL_COLORS[col.id]}} />
+          <span className="size-2 rounded-full" style={{background: COL_COLORS[col.id]}} />
           {renaming ? (
             <input
               value={titleDraft}
@@ -174,7 +174,7 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
                 if (e.key === 'Escape') { setTitleDraft(col.title); setRenaming(false); }
               }}
               className="h-7 w-32 px-2 rounded border border-line bg-white text-[13px] font-bold outline-none focus:border-zred"
-              autoFocus
+              aria-label="Renombrar columna"
             />
           ) : (
             <h3 className="text-[13px] font-bold tracking-tight">{col.title}</h3>
@@ -182,22 +182,22 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
           <span className="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-white border border-line2 text-[11px] font-bold nums">{tasks.length}</span>
         </div>
         <div className="flex items-center gap-0.5">
-          <button onClick={() => onAdd(col.id)} className="w-7 h-7 rounded hover:bg-white inline-flex items-center justify-center text-muted hover:text-carbon">
+          <button type="button" onClick={() => onAdd(col.id)} className="size-7 rounded hover:bg-white inline-flex items-center justify-center text-muted hover:text-carbon" aria-label="Añadir tarea">
             <Ic.Plus width="14" height="14"/>
           </button>
           <div ref={menuRef} className="relative">
-            <button onClick={() => setMenuOpen(open => !open)} className="w-7 h-7 rounded hover:bg-white inline-flex items-center justify-center text-muted">
+            <button type="button" onClick={() => setMenuOpen(open => !open)} className="size-7 rounded hover:bg-white inline-flex items-center justify-center text-muted" aria-label="Menú de columna">
               <Ic.Dots width="14" height="14"/>
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-8 z-30 w-44 rounded-md border border-line2 bg-white shadow-pop p-1 pop-in">
-                <button onClick={() => { setMenuOpen(false); setRenaming(true); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => { setMenuOpen(false); setRenaming(true); setTitleDraft(col.title); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Edit width="13" height="13" className="text-muted"/> Renombrar columna
                 </button>
-                <button onClick={() => { setMenuOpen(false); onClear(col); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => { setMenuOpen(false); onClear(col); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Trash width="13" height="13" className="text-muted"/> Limpiar tareas
                 </button>
-                <button onClick={() => { setMenuOpen(false); onSoon('Archivar columna estará disponible próximamente.'); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => { setMenuOpen(false); onSoon('Archivar columna estará disponible próximamente.'); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Folder width="13" height="13" className="text-muted"/> Archivar columna
                 </button>
               </div>
@@ -221,7 +221,7 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
         ))}
         {tasks.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center py-8 px-3 border-2 border-dashed border-line rounded-md text-muted">
-            <div className="w-8 h-8 rounded-full bg-white border border-line2 inline-flex items-center justify-center mb-2">
+            <div className="size-8 rounded-full bg-white border border-line2 inline-flex items-center justify-center mb-2">
               <Ic.Plus width="14" height="14"/>
             </div>
             <div className="text-[11.5px]">Suelta tarjetas aquí</div>
@@ -229,57 +229,73 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
         )}
       </div>
 
-      <button onClick={() => onAdd(col.id)} className="text-[12px] font-semibold text-muted hover:text-zred text-left px-1 py-1.5">
+      <button type="button" onClick={() => onAdd(col.id)} className="text-[12px] font-semibold text-muted hover:text-zred text-left px-1 py-1.5">
         + Añadir tarea
       </button>
     </div>
   );
 }
 
+function taskDetailReducer(state: any, action: any) {
+  switch (action.type) {
+    case 'SET_FIELD':
+      return { ...state, edit: { ...state.edit, [action.key]: action.value } };
+    case 'SET_SAVED':
+      return { ...state, saved: action.value };
+    case 'SET_NEW_SUBTASK':
+      return { ...state, newSubtask: action.value };
+    case 'SET_NEW_COMMENT':
+      return { ...state, newComment: action.value };
+    case 'SET_EDITING_SUB':
+      return { ...state, editingSub: action.value };
+    case 'TOGGLE_SUB':
+      const subs = state.edit.subtasks.map((s: any, i: number) => i === action.idx ? { ...s, d: !s.d } : s);
+      return { ...state, edit: { ...state.edit, subtasks: subs } };
+    case 'ADD_SUBTASK':
+      return {
+        ...state,
+        edit: { ...state.edit, subtasks: [...state.edit.subtasks, { t: action.text.trim(), d: false }] },
+        newSubtask: '',
+        editingSub: false,
+      };
+    default:
+      return state;
+  }
+}
+
 function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onAddComment }: any) {
+  const [state, dispatch] = useReducer(taskDetailReducer, {
+    edit: { ...(task || {}), description: task?.description || '' },
+    saved: false,
+    newSubtask: '',
+    newComment: '',
+    editingSub: false,
+  });
   if (!task) return null;
   const project = projects.find(p => p.id === task.project);
 
-  const [edit, setEdit] = useState({ ...task, description: task.description || '' });
-  const [saved, setSaved] = useState(false);
-  const [newSubtask, setNewSubtask] = useState('');
-  const [newComment, setNewComment] = useState('');
-  const [editingSub, setEditingSub] = useState(false);
-
-  useEffect(() => {
-    setEdit({ ...task, description: task.description || '' });
-    setSaved(false);
-    setEditingSub(false);
-  }, [task]);
-
-  const set = (k, v) => setEdit(f => ({ ...f, [k]: v }));
-
   function save() {
-    const prog = edit.progress || {};
-    const allDone = edit.assignee?.length > 0 && edit.assignee.every(id => prog[id] === 'done');
-    onUpdate({ ...edit, comments: task.comments, ...(allDone ? { col: 'done' } : {}) });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    const prog = state.edit.progress || {};
+    const allDone = state.edit.assignee?.length > 0 && state.edit.assignee.every((id: string) => prog[id] === 'done');
+    onUpdate({ ...state.edit, comments: task.comments, ...(allDone ? { col: 'done' } : {}) });
+    dispatch({ type: 'SET_SAVED', value: true });
+    setTimeout(() => dispatch({ type: 'SET_SAVED', value: false }), 1500);
   }
 
-  function toggleSub(idx) {
-    const sub = [...edit.subtasks];
-    sub[idx] = { ...sub[idx], d: !sub[idx].d };
-    set('subtasks', sub);
+  function toggleSub(idx: number) {
+    dispatch({ type: 'TOGGLE_SUB', idx });
   }
 
   function addSubtask() {
-    if (!newSubtask.trim()) return;
-    set('subtasks', [...edit.subtasks, { t: newSubtask.trim(), d: false }]);
-    setNewSubtask('');
-    setEditingSub(false);
+    if (!state.newSubtask.trim()) return;
+    dispatch({ type: 'ADD_SUBTASK', text: state.newSubtask });
   }
 
-  function handleCommentSubmit(e) {
+  function handleCommentSubmit(e: any) {
     if (e) e.preventDefault();
-    if (!newComment.trim()) return;
-    onAddComment(task.id, newComment.trim());
-    setNewComment('');
+    if (!state.newComment.trim()) return;
+    onAddComment(task.id, state.newComment.trim());
+    dispatch({ type: 'SET_NEW_COMMENT', value: '' });
   }
 
   return (
@@ -292,49 +308,51 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" onClick={onClose}>Cerrar</Button>
             <Button variant="primary" size="sm" onClick={save}>
-              {saved ? 'Guardado ✓' : 'Guardar cambios'}
+              {state.saved ? 'Guardado ✓' : 'Guardar cambios'}
             </Button>
           </div>
         </div>
       }>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <span className="w-2 h-2 rounded-full" style={{background: project?.accent}}/>
+          <span className="size-2 rounded-full" style={{background: project?.accent}}/>
           <span className="text-[12px] font-semibold text-muted">{project?.name}</span>
           <Tag tag={task.tag} />
         </div>
 
-        <input value={edit.title} onChange={(e) => set('title', e.target.value)}
+        <input value={state.edit.title} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'title', value: e.target.value })}
+          aria-label="Título de la tarea"
           className="w-full text-[20px] font-bold tracking-tight leading-snug bg-transparent border-b border-transparent hover:border-line focus:border-zred outline-none transition-colors" />
 
         <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-[13px]">
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Estado</div>
-            <select value={edit.col} onChange={(e) => set('col', e.target.value)}
+            <select value={state.edit.col} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'col', value: e.target.value })}
               className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white">
               {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Prioridad</div>
-            <select value={edit.priority} onChange={(e) => set('priority', e.target.value)}
+            <select value={state.edit.priority} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'priority', value: e.target.value })}
               className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white">
               {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
           </div>
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Vencimiento</div>
-            <input type="date" value={edit.due || ''} onChange={(e) => set('due', e.target.value || null)}
+            <input type="date" value={state.edit.due || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'due', value: e.target.value || null })}
+              aria-label="Fecha de vencimiento"
               className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white" />
           </div>
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Asignados</div>
             <div className="flex flex-wrap gap-1">
               {TEAM.map(u => {
-                const on = edit.assignee?.includes(u.id);
+                const on = state.edit.assignee?.includes(u.id);
                 return (
-                  <button key={u.id} type="button" onClick={() => set('assignee', on ? edit.assignee.filter(x => x !== u.id) : [...(edit.assignee || []), u.id])}
-                    className={`w-7 h-7 rounded-full text-[10px] font-bold text-white transition-all ${on ? 'ring-2 ring-offset-1 ring-zred scale-110' : 'opacity-50 hover:opacity-100'}`}
+                  <button key={u.id} type="button" onClick={() => dispatch({ type: 'SET_FIELD', key: 'assignee', value: on ? state.edit.assignee.filter((x: string) => x !== u.id) : [...(state.edit.assignee || []), u.id] })}
+                    className={`size-7 rounded-full text-[10px] font-bold text-white transition-all ${on ? 'ring-2 ring-offset-1 ring-zred scale-110' : 'opacity-50 hover:opacity-100'}`}
                     style={{background: u.color}} title={u.name}>
                     {u.initials}
                   </button>
@@ -344,21 +362,21 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
           </div>
         </div>
 
-        {edit.assignee?.length > 0 && (
+        {state.edit.assignee?.length > 0 && (
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Progreso por persona</div>
             <div className="space-y-2">
-              {edit.assignee.map(uid => {
+              {state.edit.assignee.map((uid: string) => {
                 const u = TEAM.find(m => m.id === uid);
                 if (!u) return null;
-                const status = edit.progress?.[uid] || 'todo';
+                const status = state.edit.progress?.[uid] || 'todo';
                 return (
                   <div key={uid} className="flex items-center gap-3">
                     <Avatar user={u} size={28} />
                     <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{u.name.split(' ')[0]}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       {PROG_STATUS.map(s => (
-                        <button key={s.value} onClick={() => set('progress', { ...(edit.progress || {}), [uid]: s.value })}
+                        <button type="button" key={s.value} onClick={() => dispatch({ type: 'SET_FIELD', key: 'progress', value: { ...(state.edit.progress || {}), [uid]: s.value } })}
                           title={s.label}
                           className={`px-2.5 h-7 rounded-full text-[11px] font-semibold border transition-all ${
                             status === s.value ? 'text-white border-transparent' : 'bg-white border-line text-muted hover:border-line2'
@@ -378,31 +396,32 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Subtareas</div>
-            {!editingSub && (
-              <button onClick={() => setEditingSub(true)} className="text-[12px] font-semibold text-zred hover:underline">+ Añadir</button>
+            {!state.editingSub && (
+              <button type="button" onClick={() => dispatch({ type: 'SET_EDITING_SUB', value: true })} className="text-[12px] font-semibold text-zred hover:underline">+ Añadir</button>
             )}
           </div>
-          {editingSub && (
+          {state.editingSub && (
             <div className="flex items-center gap-2 mb-2">
-              <input value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addSubtask()}
-                placeholder="Nombre de la subtarea..." autoFocus
+              <input value={state.newSubtask} onChange={(e) => dispatch({ type: 'SET_NEW_SUBTASK', value: e.target.value })}
+                onKeyDown={(e) => (e as any).key === 'Enter' && addSubtask()}
+                placeholder="Nombre de la subtarea..."
+                aria-label="Nueva subtarea"
                 className="flex-1 h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
-              <button onClick={addSubtask} className="w-9 h-9 rounded-md bg-zred text-white flex items-center justify-center hover:bg-zred2 transition-colors">
+              <button type="button" onClick={addSubtask} className="size-9 rounded-md bg-zred text-white flex items-center justify-center hover:bg-zred2 transition-colors" aria-label="Confirmar subtarea">
                 <Ic.Check width="14" height="14"/>
               </button>
-              <button onClick={() => { setEditingSub(false); setNewSubtask(''); }} className="w-9 h-9 rounded-md border border-line flex items-center justify-center text-muted hover:text-carbon">
+              <button type="button" onClick={() => { dispatch({ type: 'SET_EDITING_SUB', value: false }); dispatch({ type: 'SET_NEW_SUBTASK', value: '' }); }} className="size-9 rounded-md border border-line flex items-center justify-center text-muted hover:text-carbon" aria-label="Cancelar">
                 <Ic.X width="14" height="14"/>
               </button>
             </div>
           )}
-          {edit.subtasks.length === 0 ? (
+          {state.edit.subtasks.length === 0 ? (
             <div className="text-[13px] text-muted">Sin subtareas aún.</div>
           ) : (
             <div className="space-y-1">
-              {edit.subtasks.map((s, i) => (
-                <button key={i} onClick={() => toggleSub(i)} className="w-full flex items-center gap-3 py-2 px-2 rounded hover:bg-soft text-left">
-                  <span className={`w-[18px] h-[18px] rounded border flex items-center justify-center transition-colors ${s.d ? 'bg-zred border-zred text-white' : 'border-line bg-white'}`}>
+              {state.edit.subtasks.map((s: any, i: number) => (
+                <button type="button" key={`${s.t}-${i}`} onClick={() => toggleSub(i)} className="w-full flex items-center gap-3 p-2 rounded hover:bg-soft text-left">
+                  <span className={`size-[18px] rounded border flex items-center justify-center transition-colors ${s.d ? 'bg-zred border-zred text-white' : 'border-line bg-white'}`}>
                     {s.d && <Ic.Check width="12" height="12"/>}
                   </span>
                   <span className={`text-[13.5px] ${s.d ? 'line-through text-muted' : 'text-carbon'}`}>{s.t}</span>
@@ -414,8 +433,9 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
 
         <div>
           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Descripción</div>
-          <textarea value={edit.description || ''} onChange={(e) => set('description', e.target.value)}
+          <textarea value={state.edit.description || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'description', value: e.target.value })}
             placeholder="Especifica los criterios de aceptación, mockups relevantes y dependencias técnicas."
+            aria-label="Descripción de la tarea"
             className="w-full rounded-md border border-line2 p-3 text-[13.5px] text-carbon leading-relaxed bg-transparent resize-none min-h-[100px]" />
         </div>
 
@@ -443,11 +463,12 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
           </div>
           <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">
             <Avatar user={TEAM[0]} size={28}/>
-            <input value={newComment} onChange={(e) => setNewComment(e.target.value)}
+            <input value={state.newComment} onChange={(e) => dispatch({ type: 'SET_NEW_COMMENT', value: e.target.value })}
               placeholder="Escribe un comentario..."
+              aria-label="Nuevo comentario"
               className="flex-1 h-10 px-3.5 rounded-full bg-soft border border-transparent text-[13px] outline-none focus:border-zred/30" />
-            <button type="submit" disabled={!newComment.trim()}
-              className="w-10 h-10 rounded-full bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors">
+            <button type="submit" disabled={!state.newComment.trim()}
+              className="size-10 rounded-full bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors" aria-label="Enviar comentario">
               <Ic.Arrow width="14" height="14"/>
             </button>
           </form>
@@ -459,7 +480,6 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
 
 function NewTaskModal({ open, defaultCol, projects, onClose, onCreate }: any) {
   const [form, setForm] = useState({ title:'', project: projects[0]?.id, priority:'med', col: defaultCol || 'todo', tag:'feature', due:'', assignee: [] as string[] });
-  useEffect(() => { if (open) setForm(f => ({ ...f, col: defaultCol || 'todo', assignee: [] })); }, [open, defaultCol]);
 
   function toggleAssignee(id: string) {
     setForm(f => ({ ...f, assignee: f.assignee.includes(id) ? f.assignee.filter(x => x !== id) : [...f.assignee, id] }));
@@ -519,65 +539,96 @@ function NewTaskModal({ open, defaultCol, projects, onClose, onCreate }: any) {
   );
 }
 
-export default function Kanban({ tasks, setTasks, projects }) {
+const KANBAN_INIT = {
+  search: '',
+  projectFilter: 'all',
+  draggingId: null,
+  overCol: null,
+  openTask: null,
+  newTaskOpen: false,
+  newTaskCol: 'todo',
+  openCount: 0,
+  filtersOpen: false,
+  filters: { assignees: [] as string[], tags: [] as string[], priorities: [] as string[], due: 'all', sort: 'recent' as string },
+  draft: { assignees: [] as string[], tags: [] as string[], priorities: [] as string[], due: 'all', sort: 'recent' as string },
+  taskComments: {} as Record<string, any[]>,
+  columnTitles: null as Record<string, string> | null,
+  confirmClear: null,
+  toast: '',
+};
+
+function kanbanReducer(state: any, action: any) {
+  switch (action.type) {
+    case 'SET_SEARCH': return { ...state, search: action.value };
+    case 'SET_PROJECT_FILTER': return { ...state, projectFilter: action.value };
+    case 'SET_DRAGGING': return { ...state, draggingId: action.value };
+    case 'SET_OVER_COL': return { ...state, overCol: action.value };
+    case 'OPEN_TASK': return { ...state, openTask: action.value };
+    case 'CLOSE_TASK': return { ...state, openTask: null };
+    case 'OPEN_NEW_TASK': return { ...state, newTaskOpen: true, newTaskCol: action.col, openCount: state.openCount + 1 };
+    case 'CLOSE_NEW_TASK': return { ...state, newTaskOpen: false };
+    case 'SET_FILTERS_OPEN': return { ...state, filtersOpen: action.value };
+    case 'SET_FILTERS': return { ...state, filters: action.value };
+    case 'SET_DRAFT': return { ...state, draft: action.value };
+    case 'ADD_COMMENT':
+      const comment = { id: 'c' + Date.now(), text: action.text, userId: 'u1', timestamp: new Date().toISOString() };
+      return { ...state, taskComments: { ...state.taskComments, [action.taskId]: [...(state.taskComments[action.taskId] || []), comment] } };
+    case 'RENAME_COLUMN': return { ...state, columnTitles: { ...state.columnTitles, [action.id]: action.title } };
+    case 'SET_CONFIRM_CLEAR': return { ...state, confirmClear: action.value };
+    case 'SET_TOAST': return { ...state, toast: action.value };
+    default: return state;
+  }
+}
+
+export default function Kanban({ tasks, setTasks, projects }: any) {
+  const [state, dispatch] = useReducer(kanbanReducer, null, () => ({
+    ...KANBAN_INIT,
+    columnTitles: Object.fromEntries(COLUMNS.map(c => [c.id, c.title])),
+  }));
   const taskListRef = useRef(tasks);
   useEffect(() => { taskListRef.current = tasks; }, [tasks]);
-  const [search, setSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState('all');
-  const [draggingId, setDraggingId] = useState(null);
-  const [overCol, setOverCol] = useState(null);
-  const [openTask, setOpenTask] = useState(null);
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
-  const [newTaskCol, setNewTaskCol] = useState('todo');
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState({ assignees:[], tags:[], priorities:[], due:'all', sort:'recent' });
-  const [draft, setDraft] = useState(filters);
-  const [taskComments, setTaskComments] = useState<Record<string, any[]>>({});
-  const [columnTitles, setColumnTitles] = useState(() => Object.fromEntries(COLUMNS.map(c => [c.id, c.title])));
-  const [confirmClear, setConfirmClear] = useState(null);
-  const [toast, setToast] = useState('');
   const toastRef = useRef<number | undefined>(undefined);
 
-  const activeFilterCount = filters.assignees.length + filters.tags.length + filters.priorities.length + (filters.due !== 'all' ? 1 : 0);
+  const activeFilterCount = state.filters.assignees.length + state.filters.tags.length + state.filters.priorities.length + (state.filters.due !== 'all' ? 1 : 0);
 
   const filtered = useMemo(() => {
     const result = tasks.filter(t => {
-      if (projectFilter !== 'all' && t.project !== projectFilter) return false;
-      if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
-      if (filters.assignees.length > 0 && !t.assignee.some(a => filters.assignees.includes(a))) return false;
-      if (filters.tags.length > 0 && !filters.tags.includes(t.tag)) return false;
-      if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
-      if (filters.due !== 'all') {
+      if (state.projectFilter !== 'all' && t.project !== state.projectFilter) return false;
+      if (state.search && !t.title.toLowerCase().includes(state.search.toLowerCase())) return false;
+      if (state.filters.assignees.length > 0 && !t.assignee.some(a => state.filters.assignees.includes(a))) return false;
+      if (state.filters.tags.length > 0 && !state.filters.tags.includes(t.tag)) return false;
+      if (state.filters.priorities.length > 0 && !state.filters.priorities.includes(t.priority)) return false;
+      if (state.filters.due !== 'all') {
         const days = t.due ? daysUntil(t.due) : null;
-        if (filters.due === 'none' && t.due) return false;
-        if (filters.due === 'overdue' && (!t.due || days >= 0 || t.col === 'done')) return false;
-        if (filters.due === 'today' && days !== 0) return false;
-        if (filters.due === 'week' && (days === null || days < 0 || days > 7)) return false;
+        if (state.filters.due === 'none' && t.due) return false;
+        if (state.filters.due === 'overdue' && (!t.due || days >= 0 || t.col === 'done')) return false;
+        if (state.filters.due === 'today' && days !== 0) return false;
+        if (state.filters.due === 'week' && (days === null || days < 0 || days > 7)) return false;
       }
       return true;
     });
-    if (filters.sort === 'due') {
+    if (state.filters.sort === 'due') {
       result.sort((a, b) => (a.due || '9999-99-99').localeCompare(b.due || '9999-99-99'));
-    } else if (filters.sort === 'priority') {
+    } else if (state.filters.sort === 'priority') {
       const order = { high: 0, med: 1, low: 2 };
       result.sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1));
-    } else if (filters.sort === 'alpha') {
+    } else if (state.filters.sort === 'alpha') {
       result.sort((a, b) => a.title.localeCompare(b.title));
     } else {
       result.sort((a, b) => b.id.localeCompare(a.id));
     }
     return result;
-  }, [tasks, search, projectFilter, filters]);
+  }, [tasks, state.search, state.projectFilter, state.filters]);
 
-  function onDragStart(e, task) {
-    setDraggingId(task.id);
+  function onDragStart(e: any, task: any) {
+    dispatch({ type: 'SET_DRAGGING', value: task.id });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', task.id);
   }
-  function onDragEnd() { setDraggingId(null); setOverCol(null); }
-  function onDragOver(e, colId) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setOverCol(colId); }
-  function onDragLeave() { setOverCol(null); }
-  function onDrop(e, colId) {
+  function onDragEnd() { dispatch({ type: 'SET_DRAGGING', value: null }); dispatch({ type: 'SET_OVER_COL', value: null }); }
+  function onDragOver(e: any, colId: string) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; dispatch({ type: 'SET_OVER_COL', value: colId }); }
+  function onDragLeave() { dispatch({ type: 'SET_OVER_COL', value: null }); }
+  function onDrop(e: any, colId: string) {
     e.preventDefault();
     const id = e.dataTransfer.getData('text/plain');
     const snapshot = taskListRef.current;
@@ -592,7 +643,7 @@ export default function Kanban({ tasks, setTasks, projects }) {
       }
       return { ...t, col: colId };
     }));
-    setDraggingId(null); setOverCol(null);
+    dispatch({ type: 'SET_DRAGGING', value: null }); dispatch({ type: 'SET_OVER_COL', value: null });
     const progress = colId === 'done'
       ? Object.fromEntries(task.assignee.map(uid => [uid, 'done' as const]))
       : undefined;
@@ -608,22 +659,21 @@ export default function Kanban({ tasks, setTasks, projects }) {
       });
   }
 
-  function onAddComment(taskId, text) {
-    const comment = { id: 'c' + Date.now(), text, userId: 'u1', timestamp: new Date().toISOString() };
-    setTaskComments(prev => ({ ...prev, [taskId]: [...(prev[taskId] || []), comment] }));
+  function onAddComment(taskId: string, text: string) {
+    dispatch({ type: 'ADD_COMMENT', taskId, text });
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: (t.comments || 0) + 1 } : t));
   }
-  function renameColumn(id, title) {
-    setColumnTitles(prev => ({ ...prev, [id]: title }));
+  function renameColumn(id: string, title: string) {
+    dispatch({ type: 'RENAME_COLUMN', id, title });
   }
-  function showToast(message) {
-    setToast(message);
+  function showToast(message: string) {
+    dispatch({ type: 'SET_TOAST', value: message });
     if (toastRef.current) window.clearTimeout(toastRef.current);
-    toastRef.current = window.setTimeout(() => setToast(''), 2200);
+    toastRef.current = window.setTimeout(() => dispatch({ type: 'SET_TOAST', value: '' }), 2200);
   }
   async function clearColumn() {
-    const target = confirmClear;
-    setConfirmClear(null);
+    const target = state.confirmClear;
+    dispatch({ type: 'SET_CONFIRM_CLEAR', value: null });
     if (!target) return;
     const snapshot = taskListRef.current;
     const colTasks = snapshot.filter(t => t.col === target.id);
@@ -636,67 +686,67 @@ export default function Kanban({ tasks, setTasks, projects }) {
       showToast('Error al limpiar la columna');
     }
   }
-  const columns = COLUMNS.map(col => ({ ...col, title: columnTitles[col.id] || col.title }));
+  const columns = COLUMNS.map(col => ({ ...col, title: state.columnTitles[col.id] || col.title }));
 
   return (
-    <div className="px-8 py-6 flex flex-col" style={{minHeight:'calc(100vh - 72px)'}}>
-      {toast && (
+    <div className="px-4 md:px-8 py-4 md:py-6 flex flex-col" style={{minHeight:'calc(100vh - 72px)'}}>
+      {state.toast && (
         <div className="fixed right-6 bottom-6 z-[80] rounded-md bg-carbon text-white shadow-pop px-4 py-3 text-[13px] font-semibold pop-in">
-          {toast}
+          {state.toast}
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-4 md:mb-5">
         <div className="flex items-center gap-2 h-10 px-4 rounded-full bg-white border border-line w-full max-w-[320px]">
           <Ic.Search width="15" height="15" className="text-muted"/>
-          <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Buscar tarea..." className="bg-transparent outline-none text-[13.5px] flex-1"/>
+          <input value={state.search} onChange={(e)=>dispatch({ type: 'SET_SEARCH', value: (e.target as HTMLInputElement).value })} placeholder="Buscar tarea..." aria-label="Buscar tarea" className="bg-transparent outline-none text-[13.5px] flex-1"/>
         </div>
 
-        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1">
-          <button onClick={()=>setProjectFilter('all')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold ${projectFilter==='all'?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>Todos</button>
+        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1 overflow-x-auto no-scrollbar max-w-[calc(100vw-6rem)]">
+          <button type="button" onClick={()=>dispatch({ type: 'SET_PROJECT_FILTER', value: 'all' })} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold ${state.projectFilter==='all'?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>Todos</button>
           {projects.slice(0,4).map(p => (
-            <button key={p.id} onClick={()=>setProjectFilter(p.id)}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 ${projectFilter===p.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{background:p.accent}}/>
+            <button type="button" key={p.id} onClick={()=>dispatch({ type: 'SET_PROJECT_FILTER', value: p.id })}
+              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold flex items-center gap-1.5 ${state.projectFilter===p.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+              <span className="size-1.5 rounded-full" style={{background:p.accent}}/>
               {p.name.split('—')[0].trim()}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center -space-x-2">
+        <div className="flex items-center [&>*+*]:-ml-2">
           {TEAM.slice(0,4).map(u => <Avatar key={u.id} user={u} size={30} ring/>)}
-          <button className="w-[30px] h-[30px] rounded-full bg-white border-2 border-white dark:border-transparent ring-2 ring-line text-muted hover:text-carbon flex items-center justify-center text-[14px] font-bold">+</button>
+          <button type="button" className="size-[30px] rounded-full bg-white border-2 border-white dark:border-transparent ring-2 ring-line text-muted hover:text-carbon flex items-center justify-center text-[14px] font-bold" aria-label="Añadir miembro">+</button>
         </div>
 
-        <div className="flex-1"/>
+        <div className="hidden md:flex flex-1"/>
 
-        <Button variant="secondary" size="md" onClick={() => { setDraft(filters); setFiltersOpen(true); }}>
+        <Button variant="secondary" size="md" onClick={() => { dispatch({ type: 'SET_DRAFT', value: state.filters }); dispatch({ type: 'SET_FILTERS_OPEN', value: true }); }}>
           <Ic.Filter width="14" height="14"/> Filtros
           {activeFilterCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-zred text-white text-[10.5px] font-bold nums">{activeFilterCount}</span>}
         </Button>
-        <Button variant="primary" size="md" onClick={() => { setNewTaskCol('todo'); setNewTaskOpen(true); }}>
+        <Button variant="primary" size="md" onClick={() => dispatch({ type: 'OPEN_NEW_TASK', col: 'todo' })}>
           <Ic.Plus width="15" height="15"/> Nueva tarea
         </Button>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto scroll-thin pb-4 -mx-8 px-8">
+      <div className="flex gap-3 md:gap-4 overflow-x-auto scroll-thin pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
         {columns.map(col => (
           <Column
             key={col.id}
             col={col}
             tasks={filtered.filter(t => t.col === col.id)}
             projects={projects}
-            isOver={overCol === col.id}
-            draggingId={draggingId}
+            isOver={state.overCol === col.id}
+            draggingId={state.draggingId}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            onCardClick={setOpenTask}
+            onCardClick={(task: any) => dispatch({ type: 'OPEN_TASK', value: task })}
             onCardDragStart={onDragStart}
             onCardDragEnd={onDragEnd}
-            onAdd={(colId) => { setNewTaskCol(colId); setNewTaskOpen(true); }}
+            onAdd={(colId: string) => dispatch({ type: 'OPEN_NEW_TASK', col: colId })}
             onRename={renameColumn}
-            onClear={setConfirmClear}
+            onClear={(col: any) => dispatch({ type: 'SET_CONFIRM_CLEAR', value: col })}
             onSoon={showToast}
           />
         ))}
@@ -710,11 +760,11 @@ export default function Kanban({ tasks, setTasks, projects }) {
         <div>{filtered.length} de {tasks.length} tareas visibles</div>
       </div>
 
-      {openTask && (
-        <TaskDetail
-          task={tasks.find(t => t.id === openTask.id)}
+      {state.openTask && (
+        <TaskDetail key={state.openTask.id}
+          task={tasks.find(t => t.id === state.openTask.id)}
           projects={projects}
-          onClose={() => setOpenTask(null)}
+          onClose={() => dispatch({ type: 'CLOSE_TASK' })}
           onUpdate={async (t) => {
             const snapshot = taskListRef.current;
             const previous = snapshot.find(x => x.id === t.id);
@@ -739,15 +789,16 @@ export default function Kanban({ tasks, setTasks, projects }) {
               showToast('Error al eliminar la tarea');
             }
           }}
-          comments={taskComments[openTask.id] || []}
+          comments={state.taskComments[state.openTask.id] || []}
           onAddComment={onAddComment}
         />
       )}
       <NewTaskModal
-        open={newTaskOpen}
-        defaultCol={newTaskCol}
+        key={state.openCount}
+        open={state.newTaskOpen}
+        defaultCol={state.newTaskCol}
         projects={projects}
-        onClose={() => setNewTaskOpen(false)}
+        onClose={() => dispatch({ type: 'CLOSE_NEW_TASK' })}
         onCreate={async (t) => {
           try {
             const created = await createTask(t);
@@ -760,22 +811,22 @@ export default function Kanban({ tasks, setTasks, projects }) {
         }}
       />
       <FiltersDrawer
-        open={filtersOpen}
+        open={state.filtersOpen}
         context="kanban"
-        value={draft}
-        onChange={setDraft}
-        onApply={() => setFilters(draft)}
-        onReset={() => { const empty = { assignees:[], tags:[], priorities:[], due:'all', sort:'recent' }; setDraft(empty); setFilters(empty); }}
-        onClose={() => setFiltersOpen(false)}
+        value={state.draft}
+        onChange={(v: any) => dispatch({ type: 'SET_DRAFT', value: v })}
+        onApply={() => dispatch({ type: 'SET_FILTERS', value: state.draft })}
+        onReset={() => { const empty = { assignees:[], tags:[], priorities:[], due:'all', sort:'recent' }; dispatch({ type: 'SET_DRAFT', value: empty }); dispatch({ type: 'SET_FILTERS', value: empty }); }}
+        onClose={() => dispatch({ type: 'SET_FILTERS_OPEN', value: false })}
       />
       <ConfirmDialog
-        open={!!confirmClear}
+        open={!!state.confirmClear}
         title="¿Limpiar esta columna?"
-        message={confirmClear ? `Se eliminarán ${tasks.filter(t => t.col === confirmClear.id).length} tareas de ${confirmClear.title}. Esta acción no se puede deshacer.` : ''}
+        message={state.confirmClear ? `Se eliminarán ${tasks.filter(t => t.col === state.confirmClear.id).length} tareas de ${state.confirmClear.title}. Esta acción no se puede deshacer.` : ''}
         confirmLabel="Sí, limpiar"
         cancelLabel="Cancelar"
         onConfirm={clearColumn}
-        onCancel={() => setConfirmClear(null)}
+        onCancel={() => dispatch({ type: 'SET_CONFIRM_CLEAR', value: null })}
       />
     </div>
   );

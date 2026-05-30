@@ -60,6 +60,8 @@ export default function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const [dark, setDark] = useState(false);
   useEffect(() => {
     const saved = (() => { try { return localStorage.getItem('zivelo-dark') === '1'; } catch { return false; } })();
@@ -139,6 +141,8 @@ export default function HomePage() {
         onToggle={() => setSidebarCollapsed(c => !c)}
         onInvite={() => setInviteOpen(true)}
         onSettings={() => setView('settings')}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
       />
       <main className="flex-1 min-w-0 relative">
         <Topbar
@@ -147,6 +151,7 @@ export default function HomePage() {
           onOpenNotifs={() => setNotifsOpen(true)}
           onOpenUserMenu={() => setUserMenuOpen(v => !v)}
           userMenuRef={userMenuRef}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         />
         <UserMenu
           open={userMenuOpen}
