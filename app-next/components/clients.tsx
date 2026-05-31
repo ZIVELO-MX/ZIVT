@@ -222,6 +222,22 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
   )
   const canAccessClients = role === 'founder' || role === 'admin'
 
+  if (role === null) {
+    return (
+      <div className="px-8 py-6">
+        <Card className="p-8">
+          <div className="max-w-xl">
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Clientes</div>
+            <h2 className="text-[24px] font-extrabold tracking-tight mb-2">Cargando...</h2>
+            <p className="text-[13.5px] text-muted leading-relaxed">
+              Verificando permisos de acceso.
+            </p>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   if (!canAccessClients) {
     return (
       <div className="px-8 py-6">

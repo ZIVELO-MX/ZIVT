@@ -228,22 +228,22 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1">
+        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1 overflow-x-auto">
           {tabs.map(t => (
             <button type="button" key={t.id} onClick={()=>setPage({ filter: t.id })}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+              className={`shrink-0 px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
               {t.label}
               <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.filter===t.id?'bg-white/15':'bg-soft'}`}>{t.count}</span>
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line">
-          <Ic.Search width="14" height="14" className="text-muted"/>
-          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar..." aria-label="Buscar proyectos" className="bg-transparent outline-none text-[13px] w-44"/>
+        <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line flex-1 md:flex-none min-w-0">
+          <Ic.Search width="14" height="14" className="text-muted shrink-0"/>
+          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar..." aria-label="Buscar proyectos" className="bg-transparent outline-none text-[13px] w-full min-w-0"/>
         </div>
 
-        <div className="flex-1"/>
+        <div className="hidden md:block flex-1"/>
 
         <div className="flex items-center bg-white border border-line rounded-full p-1">
           <button type="button" onClick={()=>setPage({ view: 'grid' })} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${page.view==='grid'?'bg-carbon text-white':'text-muted'}`}>Grid</button>
