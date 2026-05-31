@@ -297,7 +297,7 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5">
           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Cartera total</div>
@@ -348,7 +348,8 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-[13px]">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[680px] text-[13px]">
           <thead className="bg-soft border-b border-line2">
             <tr className="text-left">
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Cliente</th>
@@ -372,6 +373,7 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
             ))}
           </tbody>
         </table>
+        </div>
         {filtered.length === 0 && (
           <div className="p-10 text-center text-muted">
             <div className="text-[14px] font-medium mb-1">Sin resultados</div>

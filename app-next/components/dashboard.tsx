@@ -271,8 +271,8 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
   const maxLoad = Math.max(...teamLoad.map(t => t.count), 1);
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="p-7 text-white relative overflow-hidden border border-carbon rounded-lg" style={{background:'#1D1D1B'}}>
+    <div className="p-4 md:p-8 space-y-4 md:space-y-6">
+      <div className="p-4 md:p-7 text-white relative overflow-hidden border border-carbon rounded-lg" style={{background:'#1D1D1B'}}>
         <div className="absolute inset-0 grid-bg opacity-[0.05]"/>
         <div className="absolute -right-8 -top-8 size-48 rounded-full bg-zred/20 blur-2xl"/>
         <div className="relative flex flex-wrap items-end justify-between gap-6">
@@ -280,7 +280,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60 mb-2">
               {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
             </div>
-            <h2 className="text-[32px] font-extrabold tracking-tight leading-tight mb-2">
+            <h2 className="text-[22px] md:text-[32px] font-extrabold tracking-tight leading-tight mb-2">
               {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'Raúl'}.
             </h2>
             <p className="text-white/70 text-[15px] leading-relaxed max-w-[460px]">
@@ -292,7 +292,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
               })()}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button variant="secondary" className="bg-white/10 border-white/20 text-white hover:bg-white/15 hover:text-white hover:border-white/30" onClick={() => setView('kanban')}>
               <Ic.Kanban width="16" height="16"/> Ver pendientes
             </Button>

@@ -472,7 +472,7 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
   }
 
   return (
-    <div className="px-8 py-6 space-y-5">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-5">
       {page.toast && (
         <div className="fixed right-6 bottom-6 z-[80] rounded-md bg-carbon text-white shadow-pop px-4 py-3 text-[13px] font-semibold pop-in">
           {page.toast}

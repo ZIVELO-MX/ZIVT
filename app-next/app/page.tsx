@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { TEAM, LEARNING_INIT, WORK_TEAMS_INIT } from '@/lib/data';
+import { LEARNING_INIT, WORK_TEAMS_INIT } from '@/lib/data';
 import { getClients, getNotifications, getProfiles, getProjects, getTasks, markNotificationRead, markAllNotificationsRead } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/client';
 import type { WorkTeam } from '@/lib/data';
@@ -128,7 +128,7 @@ export default function HomePage() {
     tasks: tasks.filter(t => t.col !== 'done').length,
     activeProjects: projects.filter(p => p.status !== 'done').length,
     clients: clients.length,
-    users: TEAM.length,
+    users: profiles.length,
   };
 
   return (
@@ -158,7 +158,7 @@ export default function HomePage() {
           open={userMenuOpen}
           anchorRef={userMenuRef}
           onClose={() => setUserMenuOpen(false)}
-          user={TEAM[0]}
+          user={profiles[0] ?? null}
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
           onNavigate={(v: string) => setView(v)}

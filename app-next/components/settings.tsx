@@ -237,19 +237,21 @@ export function SettingsView({ dark, onToggleDark, density, setDensity, profiles
   }, [toastMsg])
 
   return (
-    <div className="p-8 max-w-[960px] mx-auto">
-      <div className="flex gap-8">
+    <div className="p-4 md:p-8 max-w-[960px] mx-auto">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
 
-        {/* Left nav */}
-        <nav className="w-[200px] shrink-0 space-y-0.5" aria-label="Secciones de configuración">
+        {/* Nav — horizontal scroll on mobile, vertical on desktop */}
+        <nav className="md:w-[200px] md:shrink-0" aria-label="Secciones de configuración">
+          <div className="flex md:flex-col gap-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
           {NAV_SECTIONS.map(s => (
             <button type="button" key={s.id} onClick={() => setSection(s.id)}
-              className={`w-full flex items-center gap-3 px-3 h-9 rounded-md text-[13.5px] font-medium transition-colors text-left
+              className={`shrink-0 flex items-center gap-2 md:gap-3 px-3 h-9 rounded-md text-[13px] md:text-[13.5px] font-medium transition-colors text-left whitespace-nowrap
                 ${section === s.id ? 'bg-carbon text-white' : 'text-carbon hover:bg-soft'}`}>
               <span className={section === s.id ? 'text-white' : 'text-muted'}>{s.icon}</span>
               {s.label}
             </button>
           ))}
+          </div>
         </nav>
 
         {/* Content */}

@@ -197,7 +197,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
   ];
 
   return (
-    <div className="px-8 py-6 space-y-6">
+    <div className="px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-6">
       {page.toast && (
         <div className="fixed right-6 bottom-6 z-[80] rounded-md bg-carbon text-white shadow-pop px-4 py-3 text-[13px] font-semibold pop-in">
           {page.toast}
@@ -289,7 +289,8 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
         </div>
       ) : (
         <Card className="overflow-hidden">
-          <table className="w-full text-[13px]">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-[13px]">
             <thead className="bg-soft border-b border-line2">
               <tr className="text-left">
                 <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Proyecto</th>
@@ -339,6 +340,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
               })}
             </tbody>
           </table>
+          </div>
         </Card>
       )}
 

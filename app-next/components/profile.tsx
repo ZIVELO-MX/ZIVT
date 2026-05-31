@@ -271,7 +271,7 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
   )
 
   return (
-    <div className="p-8 max-w-[1100px] mx-auto space-y-6">
+    <div className="p-4 md:p-8 max-w-[1100px] mx-auto space-y-4 md:space-y-6">
 
       {/* Hero */}
       <div className="relative rounded-lg overflow-hidden border border-carbon p-7 text-white" style={{ background: '#1D1D1B' }}>
@@ -293,7 +293,7 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
           </div>
 
           {/* XP block */}
-          <div className="shrink-0 w-[260px]">
+          <div className="w-full md:w-[260px] md:shrink-0">
             <div className="flex items-end justify-between mb-2">
               <div>
                 <div className="text-[11px] font-bold uppercase tracking-wider text-white/40 mb-0.5">Experiencia</div>
@@ -347,7 +347,7 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
       </div>
 
       {/* Achievements + Activity */}
-      <div className="flex gap-6 items-start">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
 
         {/* Achievements */}
         <div className="flex-1 min-w-0 space-y-5">
@@ -385,7 +385,7 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
         </div>
 
         {/* Activity feed */}
-        <div className="w-[300px] shrink-0">
+        <div className="w-full lg:w-[300px] lg:shrink-0">
           <h2 className="text-[17px] font-bold tracking-tight mb-4">Actividad reciente</h2>
           <div className="relative">
             <div className="absolute left-[18px] top-0 bottom-0 w-px bg-line2" />
