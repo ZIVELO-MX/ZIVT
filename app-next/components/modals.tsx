@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Ic } from '@/components/icons'
 import { Avatar, Drawer, Modal, Button, Badge, Input, Select, ProgressBar, Tag } from '@/components/ui'
-import { TEAM, PROJECTS_INIT, TASKS_INIT, CLIENTS_INIT, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { PROJECTS_INIT, TASKS_INIT, CLIENTS_INIT, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import type { Notification } from '@/lib/supabase/types'
 import type { WorkTeam } from '@/lib/data'
 import { CustomDatePicker } from './controls'
@@ -97,7 +97,7 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
 }
 
-export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIFICATIONS, onMarkRead, onMarkAllRead }: any) {
+export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIFICATIONS, onMarkRead, onMarkAllRead, profiles = [] }: any) {
   const [tab, setTab] = useState('all')
   const unread = notifications.filter((n: Notification) => n.unread).length
 
@@ -135,7 +135,7 @@ export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIF
             <div className="px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">{label}</div>
             <div>
               {arr.map((n: Notification) => {
-                const user = TEAM.find(u => u.id === n.userId)
+                const user = profiles.find(u => u.id === n.userId)
                 const meta = NOTIF_ICON[n.type] || { ic: <Ic.Bell width="13" height="13" />, bg: 'bg-soft', tx: 'text-carbon' }
                 return (
                   <button type="button" key={n.id} onClick={() => onMarkRead?.(n.id)}
@@ -365,12 +365,12 @@ function CommandPaletteInner({ onClose, onNavigate, projects: dynamicProjects, c
 
 const PROJECT_ACCENTS = ['#D72228', '#1D1D1B', '#2F4858', '#6B6B6B', '#B91C22', '#7A5A12', '#1E6B3C', '#3A47B5']
 
-export function NewProjectModal({ open, onClose, onCreate, clients, presetClient, teams = EMPTY_TEAMS, setTeams }: any) {
+export function NewProjectModal({ open, onClose, onCreate, clients, presetClient, teams = EMPTY_TEAMS, setTeams, profiles = [] }: any) {
   if (!open) return null
-  return <NewProjectForm key={'np-' + (presetClient?.id || 'new')} onClose={onClose} onCreate={onCreate} clients={clients} presetClient={presetClient} teams={teams} setTeams={setTeams} />
+  return <NewProjectForm key={'np-' + (presetClient?.id || 'new')} onClose={onClose} onCreate={onCreate} clients={clients} presetClient={presetClient} teams={teams} setTeams={setTeams} profiles={profiles} />
 }
 
-function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTeams }: any) {
+function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTeams, profiles = [] }: any) {
   const [form, setForm] = useState({
     id: '', name: '', description: '', kind: 'Web development',
     client: presetClient?.id || '',
@@ -510,7 +510,7 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
 
           {/* Selección individual */}
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               const on = form.team.includes(u.id)
               return (
                 <button key={u.id} type="button" onClick={() => toggleMember(u.id)}
@@ -628,7 +628,7 @@ function detailReducer(state: DetailState, action: DetailAction): DetailState {
   }
 }
 
-export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }: any) {
+export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, profiles = [] }: any) {
   const [state, dispatch] = useReducer(detailReducer, {
     activeTab: 'details' as DetailTab,
     files: [],
@@ -659,7 +659,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
   const { activeTab, files, notes, dragging, noteSaved, links, addingLink, newLink } = state
 
   const client = clients.find(c => c.id === project.client)
-  const team = project.team.flatMap((id: string) => { const u = TEAM.find((t: any) => t.id === id); return u ? [u] : [] })
+  const team = project.team.flatMap((id: string) => { const u = profiles.find((t: any) => t.id === id); return u ? [u] : [] })
   const status = STATUS_LABEL[project.status]
   const days = daysUntil(project.due)
   const overdue = days < 0 && project.status !== 'done'
@@ -1173,7 +1173,7 @@ function PreferencesContent({ onClose, dark, onToggleDark }: any) {
   );
 }
 
-export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChange, onApply, onReset }: any) {
+export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChange, onApply, onReset, profiles = [] }: any) {
   if (!open) return null
   const tagKeys = Object.keys(TAG_STYLES)
 
@@ -1192,7 +1192,7 @@ export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChan
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-2">Asignados a</div>
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               const on = value.assignees.includes(u.id)
               return (
                 <button type="button" key={u.id} onClick={() => onChange({ ...value, assignees: toggle(value.assignees, u.id) })}

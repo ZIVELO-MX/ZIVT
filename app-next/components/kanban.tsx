@@ -160,7 +160,7 @@ function Column({ col, tasks, projects, profiles = [], onDrop, onDragOver, onDra
       onDragLeave={onDragLeave}
       onDrop={(e) => onDrop(e, col.id)}
       className={`w-[300px] shrink-0 bg-soft/70 rounded-lg p-3 flex flex-col gap-3 border border-transparent transition-colors ${isOver ? 'drag-over' : ''}`}
-      style={{ maxHeight: 'calc(100vh - 220px)' }}
+      style={{ maxHeight: 'calc(100dvh - 180px)' }}
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -821,6 +821,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
         open={state.filtersOpen}
         context="kanban"
         value={state.draft}
+        profiles={profiles}
         onChange={(v: any) => dispatch({ type: 'SET_DRAFT', value: v })}
         onApply={() => dispatch({ type: 'SET_FILTERS', value: state.draft })}
         onReset={() => { const empty = { assignees:[], tags:[], priorities:[], due:'all', sort:'recent' }; dispatch({ type: 'SET_DRAFT', value: empty }); dispatch({ type: 'SET_FILTERS', value: empty }); }}

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, Button } from '@/components/ui'
 import { ConfirmDialog } from '@/components/modals'
-import { TEAM } from '@/lib/data'
+import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
+import type { Profile } from '@/lib/supabase/types'
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 // ─── Section: Cuenta ────────────────────────────────────────────────────────────
 
 function AccountSection({ toast }: { toast: (msg: string) => void }) {
-  const user = TEAM[0]
+  const user = useCurrentProfile()
   return (
     <div>
       <SectionHeading>Cuenta</SectionHeading>
@@ -150,7 +151,7 @@ const STATUS_LABEL: Record<string, string> = {
   active: 'Activo', invited: 'Invitado', suspended: 'Suspendido',
 }
 
-function TeamSection({ toast }: { toast: (msg: string) => void }) {
+function TeamSection({ toast, profiles = [] }: { toast: (msg: string) => void; profiles?: Profile[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -160,7 +161,7 @@ function TeamSection({ toast }: { toast: (msg: string) => void }) {
         </Button>
       </div>
       <div className="bg-white border border-line2 rounded-lg overflow-hidden divide-y divide-line2">
-        {TEAM.map(u => (
+        {profiles.map(u => (
           <div key={u.id} className="flex items-center gap-3 px-5 py-3.5">
             <div className="relative">
               <Avatar user={u} size={38} />
@@ -220,9 +221,10 @@ const NAV_SECTIONS = [
 
 // ─── Main export ─────────────────────────────────────────────────────────────────
 
-export function SettingsView({ dark, onToggleDark, density, setDensity }: {
+export function SettingsView({ dark, onToggleDark, density, setDensity, profiles = [] }: {
   dark: boolean; onToggleDark: () => void
   density: string; setDensity: (d: 'compact' | 'default' | 'relaxed') => void
+  profiles?: Profile[]
 }) {
   const [section, setSection] = useState('appearance')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -255,7 +257,7 @@ export function SettingsView({ dark, onToggleDark, density, setDensity }: {
           {section === 'account'       && <AccountSection toast={setToastMsg} />}
           {section === 'appearance'    && <AppearanceSection dark={dark} onToggleDark={onToggleDark} density={density} setDensity={setDensity} />}
           {section === 'notifications' && <NotificationsSection toast={setToastMsg} />}
-          {section === 'team'          && <TeamSection toast={setToastMsg} />}
+          {section === 'team'          && <TeamSection toast={setToastMsg} profiles={profiles} />}
           {section === 'danger'        && <DangerSection onDeleteAccount={() => setConfirmDelete(true)} />}
         </div>
       </div>

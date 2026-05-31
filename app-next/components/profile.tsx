@@ -1,9 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { Ic } from '@/components/icons'
 import { Avatar, Card, Badge } from '@/components/ui'
-import { TEAM, formatDate } from '@/lib/data'
+import { formatDate } from '@/lib/data'
 import type { Task, Project } from '@/lib/data'
 
 // ─── Level system ─────────────────────────────────────────────────────────────
@@ -232,26 +233,26 @@ function AchievementBadge({ def, unlocked, catColor, catBg, catTx }: {
 // ─── Main export ───────────────────────────────────────────────────────────────
 
 export default function ProfileView({ tasks, projects }: { tasks: Task[]; projects: Project[] }) {
-  const user = TEAM[0]
+  const user = useCurrentProfile()
 
-  const xp = useMemo(() => computeXP(user.id, tasks, projects, user.joined), [tasks, projects, user])
+  const xp = useMemo(() => user ? computeXP(user.id, tasks, projects, user.joined) : 0, [tasks, projects, user])
   const level = getLevel(xp)
   const nextLevel = LEVELS[LEVELS.indexOf(level) + 1]
   const levelProgress = nextLevel
     ? Math.round(((xp - level.min) / (level.max - level.min)) * 100)
     : 100
 
-  const days = Math.floor((Date.now() - new Date(user.joined).getTime()) / 86400000)
-  const userProjects = projects.filter(p => p.team.includes(user.id))
-  const doneTasks = tasks.filter(t => t.col === 'done' && t.assignee.includes(user.id))
-  const overdueTasks = tasks.filter(t =>
+  const days = user ? Math.floor((Date.now() - new Date(user.joined).getTime()) / 86400000) : 0
+  const userProjects = user ? projects.filter(p => p.team.includes(user.id)) : []
+  const doneTasks = user ? tasks.filter(t => t.col === 'done' && t.assignee.includes(user.id)) : []
+  const overdueTasks = user ? tasks.filter(t =>
     t.due && t.col !== 'done' && t.assignee.includes(user.id) &&
     new Date(t.due) < new Date()
-  )
-  const subtasksDone = tasks.reduce((count, t) => {
+  ) : []
+  const subtasksDone = user ? tasks.reduce((count, t) => {
     if (!t.assignee.includes(user.id)) return count
     return count + t.subtasks.filter(s => s.d).length
-  }, 0)
+  }, 0) : 0
 
   const stats: Stats = {
     tasksDone: doneTasks.length + Math.floor(userProjects.reduce((s, p) => s + p.tasksDone / Math.max(p.team.length, 1), 0)),
@@ -263,7 +264,11 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
   }
 
   const unlockedIds = new Set(ACHIEVEMENTS.flatMap(a => a.check(stats) ? [a.id] : []))
-  const activity = useMemo(() => buildActivity(user.id, tasks, projects), [tasks, projects, user.id])
+  const activity = useMemo(() => user ? buildActivity(user.id, tasks, projects) : [], [tasks, projects, user])
+
+  if (!user) return (
+    <div className="p-8 flex items-center justify-center h-64 text-muted text-[14px]">Cargando perfil…</div>
+  )
 
   return (
     <div className="p-8 max-w-[1100px] mx-auto space-y-6">

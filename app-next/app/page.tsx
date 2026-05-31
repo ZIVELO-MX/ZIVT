@@ -175,7 +175,7 @@ export default function HomePage() {
           {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects}/>}
           {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles}/>}
           {view === 'settings' && (
-            <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} />
+            <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} profiles={profiles} />
           )}
           {view === 'profile' && <ProfileView tasks={tasks} projects={projects} />}
         </div>
@@ -187,6 +187,7 @@ export default function HomePage() {
         open={notifsOpen}
         onClose={() => setNotifsOpen(false)}
         notifications={notifications}
+        profiles={profiles}
         onMarkRead={(id) => {
           setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
           markNotificationRead(id).catch(() => {});

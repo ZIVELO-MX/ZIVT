@@ -4,7 +4,7 @@ import { useState, useReducer, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, AvatarStack, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui'
 import { ConfirmDialog } from '@/components/modals'
-import { TEAM, LEARNING_COLS, LEARNING_RESOURCE, formatDate, daysUntil } from '@/lib/data'
+import { LEARNING_COLS, LEARNING_RESOURCE, formatDate, daysUntil } from '@/lib/data'
 import type { LearningTask, LearningResourceType } from '@/lib/data'
 
 // ─── Resource type icon ────────────────────────────────────────────────────────
@@ -57,9 +57,9 @@ function LearningProgressStack({ members, progress }: { members: any[]; progress
 
 // ─── Learning Card ─────────────────────────────────────────────────────────────
 
-function LearningCard({ task, onClick, onDragStart, onDragEnd, dragging }: any) {
+function LearningCard({ task, onClick, onDragStart, onDragEnd, dragging, profiles = [] }: any) {
   const res = LEARNING_RESOURCE[task.type]
-  const assignees = task.assignee.flatMap((id: string) => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })
+  const assignees = task.assignee.flatMap((id: string) => { const m = profiles.find(u => u.id === id); return m ? [m] : [] })
   const days = task.due ? daysUntil(task.due) : null
   const overdue = days !== null && days < 0 && task.col !== 'done'
 
@@ -135,7 +135,7 @@ const RESOURCE_OPTIONS: { value: LearningResourceType; label: string }[] = [
   { value: 'podcast', label: 'Podcast' },
 ]
 
-function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
+function LearningDetailModal({ task, open, onClose, onUpdate, onDelete, profiles = [] }: any) {
   const [edit, setEdit] = useState({ ...task })
   const [saved, setSaved] = useState(false)
   const set = (k: string, v: any) => setEdit((f: any) => ({ ...f, [k]: v }))
@@ -151,7 +151,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
   }
 
   const res = LEARNING_RESOURCE[edit.type as LearningResourceType]
-  const assignees = edit.assignee.flatMap((id: string) => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })
+  const assignees = edit.assignee.flatMap((id: string) => { const m = profiles.find(u => u.id === id); return m ? [m] : [] })
 
   return (
     <Modal open={open} onClose={onClose} title="Detalle del recurso" width={560}
@@ -223,7 +223,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
         <div>
           <span className="block text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Asignados</span>
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               if (u.status !== 'active') return null
               const on = edit.assignee.includes(u.id)
               return (
@@ -245,7 +245,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
             <span className="block text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Progreso por persona</span>
             <div className="space-y-2">
               {edit.assignee.map((uid: string) => {
-                const u = TEAM.find(m => m.id === uid)
+                const u = profiles.find(m => m.id === uid)
                 if (!u) return null
                 const status = edit.progress?.[uid] || 'todo'
                 return (
@@ -282,7 +282,7 @@ const EMPTY_FORM = (): Omit<LearningTask, 'id'> => ({
   type: 'video', assignee: [], due: null, duration: '', tags: [], progress: {},
 })
 
-function NewLearningModal({ open, onClose, onCreate }: any) {
+function NewLearningModal({ open, onClose, onCreate, profiles = [] }: any) {
   const [form, setForm] = useState(() => EMPTY_FORM())
   const [tagInput, setTagInput] = useState('')
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
@@ -370,7 +370,7 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
         <div>
           <span className="block text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Asignar a</span>
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               if (u.status !== 'active') return null
               const on = form.assignee.includes(u.id)
               return (
@@ -393,7 +393,7 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
 
 // ─── Column ────────────────────────────────────────────────────────────────────
 
-function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd }: any) {
+function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, profiles = [] }: any) {
 
   return (
     <div
@@ -424,6 +424,7 @@ function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, o
             onClick={() => onCardClick(t)}
             onDragStart={() => onCardDragStart(t.id)}
             onDragEnd={onCardDragEnd}
+            profiles={profiles}
           />
         ))}
         {tasks.length === 0 && (
@@ -568,6 +569,7 @@ export default function Learning({ tasks, setTasks, profiles = [] }: { tasks: Le
               onCardDragStart={onDragStart}
               onCardDragEnd={onDragEnd}
               onAdd={() => dispatch({ type: 'OPEN_NEW' })}
+              profiles={profiles}
             />
           ))}
         </div>
@@ -582,6 +584,7 @@ export default function Learning({ tasks, setTasks, profiles = [] }: { tasks: Le
           onClose={() => dispatch({ type: 'SELECT', task: null })}
           onUpdate={handleUpdate}
           onDelete={(id: string) => dispatch({ type: 'CONFIRM_DELETE', id })}
+          profiles={profiles}
         />
       )}
 
@@ -590,6 +593,7 @@ export default function Learning({ tasks, setTasks, profiles = [] }: { tasks: Le
         open={newOpen}
         onClose={() => dispatch({ type: 'CLOSE_NEW' })}
         onCreate={handleCreate}
+        profiles={profiles}
       />
 
       <ConfirmDialog

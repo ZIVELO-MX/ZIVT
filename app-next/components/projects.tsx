@@ -4,16 +4,16 @@ import { useRef, useState, useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, ProgressBar, Avatar, AvatarStack } from './ui'
-import { STATUS_LABEL, TEAM, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import { ConfirmDialog, NewProjectModal, ProjectDetailDrawer } from './modals'
 import { createProject, deleteProject } from '@/lib/supabase/queries'
 
-function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon }: any) {
+function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon, profiles = [] }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const client = clients.find(c => c.id === project.client);
   const status = STATUS_LABEL[project.status];
-  const team = project.team.flatMap(id => { const u = TEAM.find(t => t.id === id); return u ? [u] : [] });
+  const team = project.team.flatMap(id => { const u = profiles.find(t => t.id === id); return u ? [u] : [] });
   const days = daysUntil(project.due);
   const overdue = days < 0 && project.status !== 'done';
 
@@ -279,6 +279,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
               key={p.id}
               project={p}
               clients={clients}
+              profiles={profiles}
               onOpen={(p) => setPage({ openDetail: p })}
               onDuplicate={duplicateProject}
               onDelete={(p) => setPage({ confirmDel: p })}
@@ -304,7 +305,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
               {filtered.map(p => {
                 const c = clients.find(cl => cl.id === p.client);
                 const status = STATUS_LABEL[p.status];
-                const team = p.team.flatMap(id => { const u = TEAM.find(t => t.id === id); return u ? [u] : [] });
+                const team = p.team.flatMap(id => { const u = profiles.find(t => t.id === id); return u ? [u] : [] });
                 const days = daysUntil(p.due);
                 return (
                   <tr key={p.id} onClick={() => setPage({ openDetail: p })} className="border-b border-line2 hover:bg-soft/50 transition-colors cursor-pointer">
@@ -346,6 +347,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
         clients={clients}
         teams={teams}
         setTeams={setTeams}
+        profiles={profiles}
         onClose={() => setPage({ newOpen: false })}
         onCreate={async (p, templateTasks) => {
           try {
@@ -359,7 +361,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
           }
         }}
       />
-      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} onClose={() => setPage({ openDetail: null })}/>
+      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} onClose={() => setPage({ openDetail: null })}/>
       <ConfirmDialog
         open={!!page.confirmDel}
         title="¿Eliminar este proyecto?"

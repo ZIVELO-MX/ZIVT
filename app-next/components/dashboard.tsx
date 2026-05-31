@@ -3,8 +3,9 @@
 import { useState, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, AvatarStack, Tag, ProgressBar, Avatar } from './ui'
-import { TEAM, ACTIVITY_INIT, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { ACTIVITY_INIT, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import { useRole } from '@/lib/supabase/useRole'
+import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import type { Client, Profile, ProfilePermission, Project, Task } from '@/lib/supabase/types'
 
 function StatCard({ label, value, delta, trend, sub, accent = undefined }: any) {
@@ -146,7 +147,7 @@ function timeAgo(ts: string): string {
   return `hace ${Math.floor(d / 7)}sem`;
 }
 
-function ActivityFeed() {
+function ActivityFeed({ profiles = [] }: { profiles?: Profile[] }) {
   const [limit, setLimit] = useState(7);
   const events = ACTIVITY_INIT.slice(0, limit);
 
@@ -168,7 +169,7 @@ function ActivityFeed() {
       </div>
       <div className="space-y-0 divide-y divide-line2">
         {events.map(ev => {
-          const user = TEAM.find(u => u.id === ev.userId);
+          const user = profiles.find(u => u.id === ev.userId);
           const color = EVENT_COLORS[ev.type] || '#6B6B6B';
           const icon  = EVENT_ICONS[ev.type]  || '·';
           return (
@@ -208,6 +209,7 @@ type DashboardProps = {
 
 export default function Dashboard({ projects, tasks, clients, permission, setView, profiles = [] }: DashboardProps) {
   const role = useRole()
+  const currentUser = useCurrentProfile()
   const [activePeriod, setActivePeriod] = useState('6M')
   const [now, setNow] = useState(new Date())
   const currentMonth = now.getMonth()
@@ -262,7 +264,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
     .sort((a,b) => new Date(a.due).getTime() - new Date(b.due).getTime())
     .slice(0, 5);
 
-  const teamLoad = TEAM.map(u => ({
+  const teamLoad = profiles.map(u => ({
     user: u,
     count: tasks.filter(t => t.assignee.includes(u.id) && t.col !== 'done').length,
   })).sort((a,b) => b.count - a.count);
@@ -279,7 +281,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
               {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
             </div>
             <h2 className="text-[32px] font-extrabold tracking-tight leading-tight mb-2">
-              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {TEAM[0]?.name.split(' ')[0] || 'Raúl'}.
+              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'Raúl'}.
             </h2>
             <p className="text-white/70 text-[15px] leading-relaxed max-w-[460px]">
               Tienes <span className="text-white font-semibold">{inProgress} tareas activas</span> y{' '}
@@ -404,7 +406,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
                         <Tag tag={t.tag} />
                       </div>
                     </div>
-                    <AvatarStack users={t.assignee.flatMap(id => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })} size={24} max={3} />
+                    <AvatarStack users={t.assignee.flatMap(id => { const m = profiles.find(u => u.id === id); return m ? [m] : [] })} size={24} max={3} />
                     <div className="text-right shrink-0 w-[110px]">
                       <div className={`text-[12.5px] font-bold nums ${overdue ? 'text-zred' : soon ? 'text-[#E0A800]' : 'text-carbon'}`}>
                         {overdue ? `−${Math.abs(days)}d` : days === 0 ? 'Hoy' : `${days} días`}
@@ -441,7 +443,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
         </Card>
       </div>
 
-      <ActivityFeed />
+      <ActivityFeed profiles={profiles} />
     </div>
   );
 }
