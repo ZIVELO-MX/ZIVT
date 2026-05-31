@@ -177,15 +177,17 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
     const target = page.confirmDel
     setPage({ confirmDel: null })
     if (!target) return
-    try {
-      await deleteProject(target.id)
-    } catch {
-      // Fallback: just remove from local state
-    }
+    const snapshot = projects
     setProjects(prev => prev.filter(p => p.id !== target.id))
     if (page.openDetail?.id === target.id) setPage({ openDetail: null })
-    router.refresh()
-    showToast('Proyecto eliminado.')
+    try {
+      await deleteProject(target.id)
+      router.refresh()
+      showToast('Proyecto eliminado.')
+    } catch {
+      setProjects(snapshot)
+      showToast('Error al eliminar el proyecto')
+    }
   }
 
   const tabs = [

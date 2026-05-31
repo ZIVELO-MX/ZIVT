@@ -6,7 +6,7 @@ import { Ic } from '@/components/icons'
 import { Input, Select, Button, Card, Badge, AvatarStack, Drawer, Modal, Avatar } from './ui'
 import { ConfirmDialog, NewProjectModal } from './modals'
 import { STATUS_LABEL, TAG_STYLES, formatDate, formatMoney, daysUntil } from '@/lib/constants'
-import { createClient, updateClient, deleteClient } from '@/lib/supabase/queries'
+import { createClient, createProject, updateClient, deleteClient } from '@/lib/supabase/queries'
 import { useRole } from '@/lib/supabase/useRole'
 import { exportToCSV } from '@/lib/utils'
 
@@ -412,7 +412,15 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
       />
       <NewProjectModal open={!!page.newProjectClient} clients={clients} presetClient={page.newProjectClient}
         onClose={() => setPage({ newProjectClient: null })}
-        onCreate={(p) => { setProjects(prev => [p, ...prev]); setPage({ newProjectClient: null }); }} />
+        onCreate={async (p) => {
+          try {
+            const created = await createProject(p)
+            setProjects(prev => [created, ...prev])
+          } catch {
+            setProjects(prev => [p, ...prev])
+          }
+          setPage({ newProjectClient: null })
+        }} />
     </div>
   )
 }
