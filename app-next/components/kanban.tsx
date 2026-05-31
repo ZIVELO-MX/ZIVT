@@ -55,15 +55,17 @@ function PriorityDot({ priority }: any) {
   );
 }
 
-function TaskCard({ task, projects, profiles = [], onClick, onDragStart, onDragEnd, dragging }: any) {
+function TaskCard({ task, projects, profiles = [], columns = [], onClick, onDragStart, onDragEnd, dragging, onMoveToCol }: any) {
   const project = projects.find(p => p.id === task.project);
   const team = task.assignee.flatMap(id => { const u = profiles.find(m => m.id === id); return u ? [u] : []; });
   const days = daysUntil(task.due);
   const overdue = task.due && days < 0 && task.col !== 'done';
   const soon = task.due && days >= 0 && days <= 3 && task.col !== 'done';
   const subDone = task.subtasks.filter(s => s.d).length;
+  const [moveOpen, setMoveOpen] = useState(false);
 
   return (
+    <div className="relative">
     <button
       type="button"
       draggable
@@ -113,13 +115,36 @@ function TaskCard({ task, projects, profiles = [], onClick, onDragStart, onDragE
             </span>
           )}
           <MemberProgressStack members={team} progress={task.progress} />
+          {/* Mobile move button */}
+          <button type="button"
+            onClick={(e) => { e.stopPropagation(); setMoveOpen(v => !v); }}
+            className="md:hidden flex items-center gap-0.5 px-2 py-1 rounded bg-soft text-muted text-[10.5px] font-semibold hover:bg-line2 active:scale-95 transition-all"
+            aria-label="Mover tarea"
+          >
+            ↕ Mover
+          </button>
         </div>
       </div>
     </button>
+
+    {/* Mobile column picker */}
+    {moveOpen && (
+      <div className="md:hidden absolute right-2 bottom-full mb-1 z-20 bg-white border border-line2 rounded-lg shadow-pop min-w-[160px] overflow-hidden">
+        {columns.filter(c => c.id !== task.col).map(c => (
+          <button key={c.id} type="button"
+            onClick={(e) => { e.stopPropagation(); onMoveToCol?.(task, c.id); setMoveOpen(false); }}
+            className="flex items-center gap-2.5 px-4 h-10 text-[12.5px] font-medium text-carbon hover:bg-soft w-full text-left transition-colors">
+            <span className="size-2 rounded-full shrink-0" style={{ background: COL_COLORS[c.id] || '#6B6B6B' }} />
+            {c.title}
+          </button>
+        ))}
+      </div>
+    )}
+    </div>
   );
 }
 
-function Column({ col, tasks, projects, profiles = [], onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon }: any) {
+function Column({ col, tasks, projects, profiles = [], columns = [], onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon, onMoveCard }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -215,10 +240,12 @@ function Column({ col, tasks, projects, profiles = [], onDrop, onDragOver, onDra
             task={t}
             projects={projects}
             profiles={profiles}
+            columns={columns}
             dragging={draggingId === t.id}
             onClick={onCardClick}
             onDragStart={onCardDragStart}
             onDragEnd={onCardDragEnd}
+            onMoveToCol={onMoveCard}
           />
         ))}
         {tasks.length === 0 && (
@@ -663,6 +690,32 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
       });
   }
 
+  function onMoveCard(task: any, colId: string) {
+    const snapshot = taskListRef.current;
+    setTasks(prev => prev.map(t => {
+      if (t.id !== task.id) return t;
+      if (colId === 'done') {
+        const prog = { ...t.progress };
+        t.assignee.forEach(uid => { prog[uid] = 'done'; });
+        return { ...t, col: colId, progress: prog };
+      }
+      return { ...t, col: colId };
+    }));
+    const progress = colId === 'done'
+      ? Object.fromEntries(task.assignee.map(uid => [uid, 'done' as const]))
+      : undefined;
+    moveTask(task.id, colId, progress)
+      .then(() => {
+        if (task.col !== 'done' && colId === 'done') {
+          notifyTaskCompleted(task.title, currentUser?.id ?? '');
+        }
+      })
+      .catch(() => {
+        setTasks(snapshot);
+        showToast('Error al mover la tarea');
+      });
+  }
+
   function onAddComment(taskId: string, text: string) {
     dispatch({ type: 'ADD_COMMENT', taskId, text });
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: (t.comments || 0) + 1 } : t));
@@ -738,6 +791,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
           <Column
             key={col.id}
             col={col}
+            columns={columns}
             tasks={filtered.filter(t => t.col === col.id)}
             projects={projects}
             profiles={profiles}
@@ -749,6 +803,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
             onCardClick={(task: any) => dispatch({ type: 'OPEN_TASK', value: task })}
             onCardDragStart={onDragStart}
             onCardDragEnd={onDragEnd}
+            onMoveCard={onMoveCard}
             onAdd={(colId: string) => dispatch({ type: 'OPEN_NEW_TASK', col: colId })}
             onRename={renameColumn}
             onClear={(col: any) => dispatch({ type: 'SET_CONFIRM_CLEAR', value: col })}
@@ -759,8 +814,11 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
 
       <div className="mt-4 flex items-center justify-between text-[12px] text-muted">
         <div className="flex items-center gap-1.5">
-          <kbd className="font-mono bg-white border border-line2 rounded px-1.5 py-0.5 text-[10.5px]">drag</kbd>
-          <span>Arrastra cualquier tarjeta entre columnas. Los cambios se sincronizan al instante.</span>
+          <span className="hidden md:inline-flex items-center gap-1.5">
+            <kbd className="font-mono bg-white border border-line2 rounded px-1.5 py-0.5 text-[10.5px]">drag</kbd>
+            Arrastra entre columnas. Los cambios se sincronizan al instante.
+          </span>
+          <span className="md:hidden">Toca ↕ Mover en cada tarjeta para cambiar columna.</span>
         </div>
         <div>{filtered.length} de {tasks.length} tareas visibles</div>
       </div>
