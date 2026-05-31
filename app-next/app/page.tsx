@@ -60,6 +60,8 @@ export default function HomePage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const [dark, setDark] = useState(false);
   useEffect(() => {
     const saved = (() => { try { return localStorage.getItem('zivelo-dark') === '1'; } catch { return false; } })();
@@ -139,6 +141,9 @@ export default function HomePage() {
         onToggle={() => setSidebarCollapsed(c => !c)}
         onInvite={() => setInviteOpen(true)}
         onSettings={() => setView('settings')}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+        profiles={profiles}
       />
       <main className="flex-1 min-w-0 relative">
         <Topbar
@@ -147,6 +152,7 @@ export default function HomePage() {
           onOpenNotifs={() => setNotifsOpen(true)}
           onOpenUserMenu={() => setUserMenuOpen(v => !v)}
           userMenuRef={userMenuRef}
+          onOpenMenu={() => setMobileMenuOpen(true)}
         />
         <UserMenu
           open={userMenuOpen}
@@ -162,14 +168,14 @@ export default function HomePage() {
         />
 
         <div data-screen-label={view}>
-          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView}/>}
-          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects}/>}
-          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning}/>}
-          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams}/>}
+          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles}/>}
+          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles}/>}
+          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles}/>}
+          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles}/>}
           {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects}/>}
           {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles}/>}
           {view === 'settings' && (
-            <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} />
+            <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} profiles={profiles} />
           )}
           {view === 'profile' && <ProfileView tasks={tasks} projects={projects} />}
         </div>
@@ -181,6 +187,7 @@ export default function HomePage() {
         open={notifsOpen}
         onClose={() => setNotifsOpen(false)}
         notifications={notifications}
+        profiles={profiles}
         onMarkRead={(id) => {
           setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
           markNotificationRead(id).catch(() => {});

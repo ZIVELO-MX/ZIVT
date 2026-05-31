@@ -1,14 +1,49 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Ic } from '@/components/icons'
 import { Avatar, Drawer, Modal, Button, Badge, Input, Select, ProgressBar, Tag } from '@/components/ui'
-import { TEAM, PROJECTS_INIT, TASKS_INIT, CLIENTS_INIT, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { PROJECTS_INIT, TASKS_INIT, CLIENTS_INIT, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import type { Notification } from '@/lib/supabase/types'
 import type { WorkTeam } from '@/lib/data'
 import { CustomDatePicker } from './controls'
+
+const EMPTY_NOTIFICATIONS: Notification[] = []
+const EMPTY_TEAMS: WorkTeam[] = []
+
+const KIND_LABEL: Record<string, string> = {
+  page: 'Navegar', action: 'Acción', project: 'Proyecto', client: 'Cliente', task: 'Tarea',
+}
+
+const DENSITIES = [
+  { id: 'compact', label: 'Compacto', desc: 'Menos espacio, más contenido' },
+  { id: 'default', label: 'Normal', desc: 'Espaciado predeterminado' },
+  { id: 'relaxed', label: 'Cómodo', desc: 'Más espacio para respirar' },
+]
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function getLinkDomain(url: string) {
+  try { return new URL(url).hostname.replace('www.', '') } catch { return url }
+}
+
+function getExtLabel(type: string, name: string) {
+  if (type.includes('pdf')) return 'PDF'
+  if (type.includes('word') || type.includes('doc')) return 'DOC'
+  if (type.includes('excel') || type.includes('sheet') || type.includes('xls')) return 'XLS'
+  if (type.includes('powerpoint') || type.includes('ppt')) return 'PPT'
+  if (type.includes('zip') || type.includes('rar')) return 'ZIP'
+  return (name.split('.').pop()?.toUpperCase() || 'FILE').slice(0, 4)
+}
+
+function toggle<T>(arr: T[], v: T): T[] { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v] }
 
 export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', tone = 'danger', onConfirm, onCancel }: any) {
   useEffect(() => {
@@ -20,10 +55,10 @@ export function ConfirmDialog({ open, title, message, confirmLabel = 'Confirmar'
   const isDanger = tone === 'danger'
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-carbon/35 fade-in" onClick={onCancel} />
+      <button type="button" className="absolute inset-0 bg-carbon/35 fade-in cursor-default" onClick={onCancel} aria-label="Cerrar" />
       <div className="relative bg-white rounded-lg shadow-pop border border-line2 pop-in w-[440px] overflow-hidden">
         <div className="p-6">
-          <div className={`w-12 h-12 rounded-full mb-4 inline-flex items-center justify-center ${isDanger ? 'bg-tint text-zred' : 'bg-soft text-carbon'}`}>
+          <div className={`size-12 rounded-full mb-4 inline-flex items-center justify-center ${isDanger ? 'bg-tint text-zred' : 'bg-soft text-carbon'}`}>
             {isDanger ? <Ic.Trash width="22" height="22" /> : <Ic.Check width="22" height="22" />}
           </div>
           <h3 className="text-[18px] font-bold tracking-tight mb-2">{title}</h3>
@@ -62,18 +97,17 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
 }
 
-export function NotificationsDrawer({ open, onClose, notifications = [], onMarkRead, onMarkAllRead }: any) {
+export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIFICATIONS, onMarkRead, onMarkAllRead, profiles = [] }: any) {
   const [tab, setTab] = useState('all')
   const unread = notifications.filter((n: Notification) => n.unread).length
 
   const visible = tab === 'unread' ? notifications.filter((n: Notification) => n.unread) : notifications
-  const groups: Record<string, Notification[]> = { Hoy: [], 'Esta semana': [], Anteriores: [] }
+  const groups: Record<string, Notification[]> = {}
   visible.forEach((n: Notification) => {
     const diff = Date.now() - new Date(n.createdAt).getTime();
     const hrs = Math.floor(diff / 3600000);
-    if (hrs < 24) groups['Hoy'].push(n)
-    else if (hrs < 168) groups['Esta semana'].push(n)
-    else groups['Anteriores'].push(n)
+    const key = hrs < 24 ? 'Hoy' : hrs < 168 ? 'Esta semana' : 'Anteriores';
+    (groups[key] = groups[key] || []).push(n)
   })
 
   return (
@@ -88,28 +122,28 @@ export function NotificationsDrawer({ open, onClose, notifications = [], onMarkR
       }>
       <div className="px-6 pt-4 pb-2">
         <div className="flex items-center gap-1 bg-soft rounded-full p-1 w-fit">
-          <button onClick={() => setTab('all')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold ${tab === 'all' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>Todas</button>
-          <button onClick={() => setTab('unread')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${tab === 'unread' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>
+          <button type="button" onClick={() => setTab('all')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold ${tab === 'all' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>Todas</button>
+          <button type="button" onClick={() => setTab('unread')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${tab === 'unread' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>
             Sin leer
             {unread > 0 && <span className="px-1.5 rounded-full bg-zred text-white text-[10.5px] nums">{unread}</span>}
           </button>
         </div>
       </div>
       <div className="px-3 pb-4">
-        {Object.entries(groups).filter(([, arr]) => arr.length > 0).map(([label, arr]) => (
+        {Object.entries(groups).map(([label, arr]) => (
           <div key={label} className="mb-4">
             <div className="px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">{label}</div>
             <div>
               {arr.map((n: Notification) => {
-                const user = TEAM.find(u => u.id === n.userId)
+                const user = profiles.find(u => u.id === n.userId)
                 const meta = NOTIF_ICON[n.type] || { ic: <Ic.Bell width="13" height="13" />, bg: 'bg-soft', tx: 'text-carbon' }
                 return (
-                  <button key={n.id} onClick={() => onMarkRead?.(n.id)}
-                    className={`group w-full text-left px-3 py-3 rounded-md hover:bg-soft transition-colors flex items-start gap-3 relative`}>
-                    {n.unread && <span className="absolute left-1 top-5 w-1.5 h-1.5 rounded-full bg-zred" />}
+                  <button type="button" key={n.id} onClick={() => onMarkRead?.(n.id)}
+                    className={`group w-full text-left p-3 rounded-md hover:bg-soft transition-colors flex items-start gap-3 relative`}>
+                    {n.unread && <span className="absolute left-1 top-5 size-1.5 rounded-full bg-zred" />}
                     <div className="relative">
                       <Avatar user={user} size={36} />
-                      <span className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full ring-2 ring-white inline-flex items-center justify-center ${meta.bg} ${meta.tx}`}>
+                      <span className={`absolute -bottom-1 -right-1 size-5 rounded-full ring-2 ring-white inline-flex items-center justify-center ${meta.bg} ${meta.tx}`}>
                         {meta.ic}
                       </span>
                     </div>
@@ -129,8 +163,7 @@ export function NotificationsDrawer({ open, onClose, notifications = [], onMarkR
           </div>
         ))}
         {visible.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-12 h-12 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-3">
+          <div className="flex flex-col items-center justify-center py-16 text-center">\n            <div className="size-12 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-3">
               <Ic.Check width="20" height="20" />
             </div>
             <div className="text-[14px] font-semibold mb-1">Todo al día</div>
@@ -175,14 +208,14 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
           { ic: <Ic.Bell width="15" height="15" />, l: 'Notificaciones', k: '', onClick: () => { onClose(); onOpenNotifs?.(); } },
           { ic: <Ic.Sparkle width="15" height="15" />, l: 'Atajos de teclado', k: '?', onClick: () => { onClose(); onOpenShortcuts?.(); } },
         ].map(it => (
-          <button key={it.l} onClick={it.onClick} className="w-full flex items-center gap-3 px-3 h-9 rounded-md hover:bg-soft text-[13px] text-left">
+          <button type="button" key={it.l} onClick={it.onClick} className="w-full flex items-center gap-3 px-3 h-9 rounded-md hover:bg-soft text-[13px] text-left">
             <span className="text-muted">{it.ic}</span>
             <span className="flex-1">{it.l}</span>
             {it.k && <kbd className="font-mono text-[10.5px] text-muted bg-soft border border-line2 rounded px-1.5 py-0.5">{it.k}</kbd>}
           </button>
         ))}
 
-        <button onClick={onToggleDark} className="w-full flex items-center gap-3 px-3 h-9 rounded-md hover:bg-soft text-[13px] text-left">
+        <button type="button" onClick={onToggleDark} className="w-full flex items-center gap-3 px-3 h-9 rounded-md hover:bg-soft text-[13px] text-left">
           <span className="text-muted">
             {dark ? (
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></svg>
@@ -192,12 +225,12 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
           </span>
           <span className="flex-1">{dark ? 'Modo claro' : 'Modo oscuro'}</span>
           <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${dark ? 'bg-zred' : 'bg-soft border border-line'}`}>
-            <span className={`w-4 h-4 rounded-full bg-white transition-transform shadow ${dark ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+            <span className={`size-4 rounded-full bg-white transition-transform shadow ${dark ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
           </span>
         </button>
       </div>
       <div className="p-2 border-t border-line2">
-        <button
+        <button type="button"
           onClick={async () => {
             try {
               localStorage.removeItem('zivelo-dark')
@@ -218,13 +251,17 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
 }
 
 export function CommandPalette({ open, onClose, onNavigate, projects: dynamicProjects, clients: dynamicClients, tasks: dynamicTasks }: any) {
+  if (!open) return null
+  return <CommandPaletteInner key="cmd" onClose={onClose} onNavigate={onNavigate}
+    projects={dynamicProjects} clients={dynamicClients} tasks={dynamicTasks} />
+}
+
+function CommandPaletteInner({ onClose, onNavigate, projects: dynamicProjects, clients: dynamicClients, tasks: dynamicTasks }: any) {
   const [q, setQ] = useState('')
   const [idx, setIdx] = useState(0)
   const inputRef = useRef(null)
 
-  useEffect(() => {
-    if (open) { setQ(''); setIdx(0); setTimeout(() => inputRef.current?.focus(), 50) }
-  }, [open])
+  useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 50); return () => clearTimeout(t) }, [])
 
   const projs = dynamicProjects || PROJECTS_INIT;
   const clis = dynamicClients || CLIENTS_INIT;
@@ -264,17 +301,11 @@ export function CommandPalette({ open, onClose, onNavigate, projects: dynamicPro
     return all.filter(x => x.label.toLowerCase().includes(term) || x.sub.toLowerCase().includes(term)).slice(0, 12)
   }, [all, q])
 
-  useEffect(() => { setIdx(0) }, [q])
-
   function onKey(e) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setIdx(i => Math.min(i + 1, filtered.length - 1)) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setIdx(i => Math.max(i - 1, 0)) }
     else if (e.key === 'Enter') { e.preventDefault(); filtered[idx]?.action(); onClose() }
   }
-
-  if (!open) return null
-
-  const KIND_LABEL = { page: 'Navegar', action: 'Acción', project: 'Proyecto', client: 'Cliente', task: 'Tarea' }
 
   const groups: Record<string, any[]> = {}
   filtered.forEach((it, i) => {
@@ -284,13 +315,13 @@ export function CommandPalette({ open, onClose, onNavigate, projects: dynamicPro
 
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center p-4 pt-[12vh]">
-      <div className="absolute inset-0 bg-carbon/35 fade-in" onClick={onClose} />
+      <button type="button" className="absolute inset-0 bg-carbon/35 fade-in cursor-default" onClick={onClose} aria-label="Cerrar" />
       <div className="relative w-full max-w-[620px] bg-white rounded-lg shadow-pop border border-line2 pop-in overflow-hidden">
         <div className="flex items-center gap-3 px-5 h-14 border-b border-line2">
           <Ic.Search width="18" height="18" className="text-muted" />
-          <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onKey}
+          <input ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setIdx(0) }} onKeyDown={onKey}
             placeholder="Buscar páginas, tareas, proyectos, clientes..."
-            className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-muted" />
+            className="flex-1 bg-transparent outline-none text-[15px] placeholder:text-muted" aria-label="Buscar" />
           <kbd className="font-mono text-[10.5px] text-muted bg-soft border border-line2 rounded px-1.5 py-0.5">Esc</kbd>
         </div>
         <div className="max-h-[60vh] overflow-y-auto scroll-thin py-2">
@@ -304,9 +335,9 @@ export function CommandPalette({ open, onClose, onNavigate, projects: dynamicPro
               <div key={kind} className="mb-1">
                 <div className="px-5 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">{KIND_LABEL[kind]}</div>
                 {items.map(it => (
-                  <button key={it.id} onMouseEnter={() => setIdx(it._i)} onClick={() => { it.action(); onClose() }}
+                  <button type="button" key={it.id} onMouseEnter={() => setIdx(it._i)} onClick={() => { it.action(); onClose() }}
                     className={`w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors ${idx === it._i ? 'bg-soft' : ''}`}>
-                    <span className={`w-8 h-8 rounded-md inline-flex items-center justify-center ${it.accent ? '' : 'bg-soft text-carbon'}`}
+                    <span className={`size-8 rounded-md inline-flex items-center justify-center ${it.accent ? '' : 'bg-soft text-carbon'}`}
                       style={it.accent ? { background: it.accent + '18', color: it.accent } : {}}>
                       {it.icon}
                     </span>
@@ -334,24 +365,20 @@ export function CommandPalette({ open, onClose, onNavigate, projects: dynamicPro
 
 const PROJECT_ACCENTS = ['#D72228', '#1D1D1B', '#2F4858', '#6B6B6B', '#B91C22', '#7A5A12', '#1E6B3C', '#3A47B5']
 
-export function NewProjectModal({ open, onClose, onCreate, clients, presetClient, teams = [], setTeams }: any) {
-  const empty = useMemo(() => ({
+export function NewProjectModal({ open, onClose, onCreate, clients, presetClient, teams = EMPTY_TEAMS, setTeams, profiles = [] }: any) {
+  if (!open) return null
+  return <NewProjectForm key={'np-' + (presetClient?.id || 'new')} onClose={onClose} onCreate={onCreate} clients={clients} presetClient={presetClient} teams={teams} setTeams={setTeams} profiles={profiles} />
+}
+
+function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTeams, profiles = [] }: any) {
+  const [form, setForm] = useState({
     id: '', name: '', description: '', kind: 'Web development',
     client: presetClient?.id || '',
     status: 'todo',
     start: new Date().toISOString().slice(0, 10), due: '',
     budget: 0, team: ['u1'], accent: '#D72228',
-  }), [presetClient?.id])
-
-  const [form, setForm] = useState(empty)
+  })
   const [useTemplate, setUseTemplate] = useState(true)
-
-  useEffect(() => {
-    if (open) {
-      setForm(empty)
-      setUseTemplate(true)
-    }
-  }, [open, empty])
 
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
   const template = TASK_TEMPLATES[form.kind] ?? []
@@ -407,7 +434,7 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Nuevo proyecto" width={600}
+    <Modal open={true} onClose={onClose} title="Nuevo proyecto" width={600}
       footer={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
         <Button variant="primary" onClick={submit} disabled={!form.name.trim()}>
@@ -419,15 +446,17 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
         <Input label="Nombre del proyecto" placeholder="Ej. Café Bruma — Web + reservas" value={form.name} onChange={(e) => set('name', e.target.value)} autoFocus />
 
         <div>
-          <label className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">
+          <label htmlFor="proj-desc" className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">
             Descripción <span className="text-muted font-normal normal-case tracking-normal">(opcional)</span>
           </label>
           <textarea
+            id="proj-desc"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             placeholder="Contexto, objetivos, tecnologías, notas iniciales..."
             className="w-full rounded-md border border-line2 px-3 py-2.5 text-[13.5px] leading-relaxed resize-none outline-none focus:border-zred/50 focus:ring-2 focus:ring-zred/10 placeholder:text-muted transition-all"
             style={{ height: '72px' }}
+            aria-label="Descripción del proyecto"
           />
         </div>
 
@@ -470,7 +499,7 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
                   <button key={wt.id} type="button" onClick={() => applyTeam(wt)}
                     className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border text-[12px] font-semibold transition-all ${allIn ? 'text-white border-transparent' : 'bg-white text-carbon border-line hover:border-[var(--tc)]/60'}`}
                     style={allIn ? { background: wt.color, borderColor: wt.color } : { '--tc': wt.color } as React.CSSProperties}>
-                    <span className="w-2 h-2 rounded-full" style={{ background: allIn ? 'rgba(255,255,255,0.7)' : wt.color }} />
+                    <span className="size-2 rounded-full" style={{ background: allIn ? 'rgba(255,255,255,0.7)' : wt.color }} />
                     {wt.name}
                     <span className="opacity-60 text-[10.5px]">·{wt.members.length}</span>
                   </button>
@@ -481,7 +510,7 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
 
           {/* Selección individual */}
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               const on = form.team.includes(u.id)
               return (
                 <button key={u.id} type="button" onClick={() => toggleMember(u.id)}
@@ -502,7 +531,7 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
               onClick={() => setUseTemplate(v => !v)}
               className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${useTemplate ? 'bg-[#E6F4EA]' : 'bg-soft/60'}`}>
               <div className="flex items-center gap-2.5">
-                <span className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${useTemplate ? 'bg-[#1E6B3C] border-[#1E6B3C]' : 'border-line bg-white'}`}>
+                <span className={`size-5 rounded border flex items-center justify-center transition-colors ${useTemplate ? 'bg-[#1E6B3C] border-[#1E6B3C]' : 'border-line bg-white'}`}>
                   {useTemplate && <Ic.Check width="11" height="11" className="text-white" />}
                 </span>
                 <span className="text-[13px] font-semibold">
@@ -516,12 +545,12 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
 
             {useTemplate && (
               <div className="px-4 py-3 space-y-1.5 border-t border-line2 max-h-48 overflow-y-auto scroll-thin">
-                {template.map((t, i) => {
+                {template.map(t => {
                   const tagMeta = TAG_STYLES[t.tag]
                   return (
-                    <div key={i} className="flex items-center gap-2.5 py-1">
-                      <span className="w-4 h-4 rounded-full border border-line flex items-center justify-center shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-muted" />
+                    <div key={t.title} className="flex items-center gap-2.5 py-1">
+                      <span className="size-4 rounded-full border border-line flex items-center justify-center shrink-0">
+                        <span className="size-1.5 rounded-full bg-muted" />
                       </span>
                       <span className="flex-1 text-[12.5px] text-carbon">{t.title}</span>
                       {tagMeta && (
@@ -540,8 +569,8 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
           <div className="text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Color de acento</div>
           <div className="flex gap-2">
             {PROJECT_ACCENTS.map(c => (
-              <button key={c} type="button" onClick={() => set('accent', c)}
-                className={`w-8 h-8 rounded-md transition-transform ${form.accent === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-105'}`}
+              <button key={c} type="button" onClick={() => set('accent', c)} aria-label={`Color ${c}`}
+                className={`size-8 rounded-md transition-transform ${form.accent === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-105'}`}
                 style={{ background: c }} />
             ))}
           </div>
@@ -552,38 +581,85 @@ export function NewProjectModal({ open, onClose, onCreate, clients, presetClient
   )
 }
 
-export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }: any) {
-  const [activeTab, setActiveTab] = useState<'details' | 'files' | 'notes'>('details')
-  const [files, setFiles] = useState<any[]>([])
-  const [notes, setNotes] = useState('')
-  const [dragging, setDragging] = useState(false)
-  const [noteSaved, setNoteSaved] = useState(false)
-  const [links, setLinks] = useState<{ id: string; label: string; url: string }[]>([])
-  const [addingLink, setAddingLink] = useState(false)
-  const [newLink, setNewLink] = useState({ label: '', url: '' })
+type DetailTab = 'details' | 'files' | 'notes'
+
+interface DetailState {
+  activeTab: DetailTab
+  files: any[]
+  notes: string
+  dragging: boolean
+  noteSaved: boolean
+  links: { id: string; label: string; url: string }[]
+  addingLink: boolean
+  newLink: { label: string; url: string }
+}
+
+type DetailAction =
+  | { type: 'SET_ACTIVE_TAB'; tab: DetailTab }
+  | { type: 'ADD_FILES'; files: any[] }
+  | { type: 'REMOVE_FILE'; id: string }
+  | { type: 'SET_NOTES'; notes: string }
+  | { type: 'SET_DRAGGING'; dragging: boolean }
+  | { type: 'SET_NOTE_SAVED'; saved: boolean }
+  | { type: 'ADD_LINK'; link: { id: string; label: string; url: string } }
+  | { type: 'REMOVE_LINK'; id: string }
+  | { type: 'SET_ADDING_LINK'; adding: boolean }
+  | { type: 'SET_NEW_LINK'; link: { label: string; url: string } }
+  | { type: 'RESET'; notes: string }
+
+function detailReducer(state: DetailState, action: DetailAction): DetailState {
+  switch (action.type) {
+    case 'SET_ACTIVE_TAB': return { ...state, activeTab: action.tab }
+    case 'ADD_FILES': return { ...state, files: [...state.files, ...action.files] }
+    case 'REMOVE_FILE': {
+      const f = state.files.find(x => x.id === action.id)
+      if (f) URL.revokeObjectURL(f.url)
+      return { ...state, files: state.files.filter(x => x.id !== action.id) }
+    }
+    case 'SET_NOTES': return { ...state, notes: action.notes }
+    case 'SET_DRAGGING': return { ...state, dragging: action.dragging }
+    case 'SET_NOTE_SAVED': return { ...state, noteSaved: action.saved }
+    case 'ADD_LINK': return { ...state, links: [...state.links, action.link], addingLink: false, newLink: { label: '', url: '' } }
+    case 'REMOVE_LINK': return { ...state, links: state.links.filter(l => l.id !== action.id) }
+    case 'SET_ADDING_LINK': return { ...state, addingLink: action.adding }
+    case 'SET_NEW_LINK': return { ...state, newLink: action.link }
+    case 'RESET': return { activeTab: 'details', files: [], notes: action.notes, dragging: false, noteSaved: false, links: [], addingLink: false, newLink: { label: '', url: '' } }
+    default: return state
+  }
+}
+
+export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, profiles = [] }: any) {
+  const [state, dispatch] = useReducer(detailReducer, {
+    activeTab: 'details' as DetailTab,
+    files: [],
+    notes: project?.description || '',
+    dragging: false,
+    noteSaved: false,
+    links: [],
+    addingLink: false,
+    newLink: { label: '', url: '' },
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (project) {
-      setActiveTab('details')
-      setFiles([])
-      setNotes(project.description || '')
-      setNoteSaved(false)
-      setLinks([])
-      setAddingLink(false)
-      setNewLink({ label: '', url: '' })
-    }
-  }, [project?.id])
 
   useEffect(() => {
     return () => { if (noteSaveRef.current) clearTimeout(noteSaveRef.current) }
   }, [])
 
+  const [todayMs, setTodayMs] = useState(Date.now())
+  useEffect(() => { setTodayMs(Date.now()) }, [])
+  const startTs = project ? new Date(project.start).getTime() : 0
+  const dueTs = project ? new Date(project.due).getTime() : 0
+  const totalTs = dueTs - startTs
+  const elapsedTs = todayMs - startTs
+  const pctTimeline = Math.min(Math.max(Math.round((elapsedTs / totalTs) * 100), 0), 100)
+
   if (!project) return null
 
+  const { activeTab, files, notes, dragging, noteSaved, links, addingLink, newLink } = state
+
   const client = clients.find(c => c.id === project.client)
-  const team = project.team.map(id => TEAM.find(u => u.id === id)).filter(Boolean)
+  const team = project.team.flatMap((id: string) => { const u = profiles.find((t: any) => t.id === id); return u ? [u] : [] })
   const status = STATUS_LABEL[project.status]
   const days = daysUntil(project.due)
   const overdue = days < 0 && project.status !== 'done'
@@ -598,49 +674,24 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
       url: URL.createObjectURL(f),
       isImage: f.type.startsWith('image/'),
     }))
-    setFiles(prev => [...prev, ...added])
+    dispatch({ type: 'ADD_FILES', files: added })
   }
 
   function removeFile(id: string) {
-    setFiles(prev => {
-      const f = prev.find(x => x.id === id)
-      if (f) URL.revokeObjectURL(f.url)
-      return prev.filter(x => x.id !== id)
-    })
+    dispatch({ type: 'REMOVE_FILE', id })
   }
 
   function saveNotes() {
-    setNoteSaved(true)
+    dispatch({ type: 'SET_NOTE_SAVED', saved: true })
     if (noteSaveRef.current) clearTimeout(noteSaveRef.current)
-    noteSaveRef.current = setTimeout(() => setNoteSaved(false), 2000)
-  }
-
-  function formatSize(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-  }
-
-  function getLinkDomain(url: string) {
-    try { return new URL(url).hostname.replace('www.', '') } catch { return url }
+    noteSaveRef.current = setTimeout(() => dispatch({ type: 'SET_NOTE_SAVED', saved: false }), 2000)
   }
 
   function addLink() {
     if (!newLink.url.trim()) return
     const label = newLink.label.trim() || getLinkDomain(newLink.url)
     const href = newLink.url.startsWith('http') ? newLink.url : 'https://' + newLink.url
-    setLinks(prev => [...prev, { id: 'l' + Date.now(), label, url: href }])
-    setNewLink({ label: '', url: '' })
-    setAddingLink(false)
-  }
-
-  function getExtLabel(type: string, name: string) {
-    if (type.includes('pdf')) return 'PDF'
-    if (type.includes('word') || type.includes('doc')) return 'DOC'
-    if (type.includes('excel') || type.includes('sheet') || type.includes('xls')) return 'XLS'
-    if (type.includes('powerpoint') || type.includes('ppt')) return 'PPT'
-    if (type.includes('zip') || type.includes('rar')) return 'ZIP'
-    return (name.split('.').pop()?.toUpperCase() || 'FILE').slice(0, 4)
+    dispatch({ type: 'ADD_LINK', link: { id: 'l' + Date.now(), label, url: href } })
   }
 
   const images = files.filter(f => f.isImage)
@@ -663,7 +714,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
       {/* Fixed header */}
       <div className="px-6 pt-5 pb-4 border-b border-line2">
         <div className="flex items-start gap-4 mb-4">
-          <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0" style={{ background: project.accent + '18' }}>
+          <div className="size-14 rounded-md flex items-center justify-center shrink-0" style={{ background: project.accent + '18' }}>
             <Ic.Folder width="24" height="24" style={{ color: project.accent }} />
           </div>
           <div className="flex-1 min-w-0">
@@ -680,7 +731,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 
         <div className="flex items-center gap-1 bg-soft rounded-full p-1 w-fit">
           {TABS.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id as any)}
+            <button type="button" key={t.id} onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: t.id as DetailTab })}
               className={`px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all ${activeTab === t.id ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
               {t.label}
             </button>
@@ -690,7 +741,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 
       {/* Resumen */}
       {activeTab === 'details' && (
-        <div className="px-6 py-6 space-y-6">
+        <div className="p-6 space-y-6">
           <div className="rounded-md border border-line2 p-5 bg-gradient-to-br from-white to-soft/40">
             <div className="flex items-end justify-between mb-3">
               <div>
@@ -707,12 +758,6 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 
           {/* Timeline */}
           {(() => {
-            const startMs = new Date(project.start).getTime()
-            const dueMs = new Date(project.due).getTime()
-            const todayMs = Date.now()
-            const total = dueMs - startMs
-            const elapsed = todayMs - startMs
-            const pct = Math.min(Math.max(Math.round((elapsed / total) * 100), 0), 100)
             const timelineColor = overdue ? '#D72228' : project.accent
             return (
               <div className="p-4 rounded-md border border-line2">
@@ -725,13 +770,13 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
                   <span className="text-muted">{formatDate(project.due)}</span>
                 </div>
                 <div className="relative h-2 rounded-full bg-soft overflow-visible">
-                  <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, background: timelineColor }} />
+                  <div className="h-2 rounded-full transition-all" style={{ width: `${pctTimeline}%`, background: timelineColor }} />
                   <div
-                    className="absolute w-3.5 h-3.5 rounded-full border-2 border-white shadow-pop top-1/2 -translate-y-1/2 -translate-x-1/2"
-                    style={{ left: `${Math.min(pct, 97)}%`, background: timelineColor }}
+                    className="absolute size-3.5 rounded-full border-2 border-white shadow-pop top-1/2 -translate-y-1/2 -translate-x-1/2"
+                    style={{ left: `${Math.min(pctTimeline, 97)}%`, background: timelineColor }}
                   />
                 </div>
-                <div className="text-[10.5px] text-muted mt-2 text-right">{pct}% del tiempo transcurrido</div>
+                <div className="text-[10.5px] text-muted mt-2 text-right">{pctTimeline}% del tiempo transcurrido</div>
               </div>
             )
           })()}
@@ -790,7 +835,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
             <div className="flex items-center justify-between mb-2">
               <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Links útiles</div>
               {!addingLink && (
-                <button onClick={() => setAddingLink(true)}
+                <button type="button" onClick={() => dispatch({ type: 'SET_ADDING_LINK', adding: true })}
                   className="inline-flex items-center gap-1 text-[12px] font-semibold text-zred hover:opacity-75 transition-opacity">
                   <Ic.Plus width="13" height="13" /> Agregar
                 </button>
@@ -800,22 +845,23 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
             {addingLink && (
               <div className="rounded-md border border-line2 p-3 space-y-2 mb-2 bg-soft/40">
                 <input
-                  autoFocus
                   value={newLink.label}
-                  onChange={(e) => setNewLink(l => ({ ...l, label: e.target.value }))}
+                  onChange={(e) => dispatch({ type: 'SET_NEW_LINK', link: { ...state.newLink, label: e.target.value } })}
                   placeholder="Nombre (ej. Figma, GitHub, Staging...)"
                   className="w-full rounded border border-line2 px-3 py-2 text-[13px] outline-none focus:border-zred/50 bg-white"
+                  aria-label="Nombre del enlace"
                 />
                 <input
                   value={newLink.url}
-                  onChange={(e) => setNewLink(l => ({ ...l, url: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') setAddingLink(false) }}
+                  onChange={(e) => dispatch({ type: 'SET_NEW_LINK', link: { ...state.newLink, url: e.target.value } })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addLink(); if (e.key === 'Escape') dispatch({ type: 'SET_ADDING_LINK', adding: false }) }}
                   placeholder="https://..."
                   className="w-full rounded border border-line2 px-3 py-2 text-[13px] outline-none focus:border-zred/50 bg-white"
+                  aria-label="URL del enlace"
                 />
                 <div className="flex gap-2">
                   <Button variant="primary" size="sm" onClick={addLink}>Agregar</Button>
-                  <Button variant="ghost" size="sm" onClick={() => { setAddingLink(false); setNewLink({ label: '', url: '' }) }}>Cancelar</Button>
+                  <Button variant="ghost" size="sm" onClick={() => { dispatch({ type: 'SET_ADDING_LINK', adding: false }); dispatch({ type: 'SET_NEW_LINK', link: { label: '', url: '' } }) }}>Cancelar</Button>
                 </div>
               </div>
             )}
@@ -828,7 +874,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
               <div className="space-y-1.5">
                 {links.map(lk => (
                   <div key={lk.id} className="group flex items-center gap-3 px-3 py-2.5 rounded-md border border-line2 hover:bg-soft/60 transition-colors">
-                    <div className="w-7 h-7 rounded bg-soft border border-line2 flex items-center justify-center shrink-0">
+                    <div className="size-7 rounded bg-soft border border-line2 flex items-center justify-center shrink-0">
                       <Ic.Arrow width="12" height="12" className="text-muted" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -840,8 +886,8 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
                       className="opacity-0 group-hover:opacity-100 text-[11.5px] font-semibold text-zred hover:underline transition-opacity">
                       Abrir
                     </a>
-                    <button onClick={() => setLinks(prev => prev.filter(x => x.id !== lk.id))}
-                      className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded hover:bg-tint text-muted hover:text-zred flex items-center justify-center transition-all">
+                    <button type="button" onClick={() => dispatch({ type: 'REMOVE_LINK', id: lk.id })} aria-label="Eliminar enlace"
+                      className="opacity-0 group-hover:opacity-100 size-7 rounded hover:bg-tint text-muted hover:text-zred flex items-center justify-center transition-all">
                       <Ic.Trash width="12" height="12" />
                     </button>
                   </div>
@@ -866,7 +912,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
                   const isDone = t.col === 'done'
                   return (
                     <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-soft transition-colors">
-                      <span className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center ${isDone ? 'bg-[#1E6B3C] border-[#1E6B3C] text-white' : 'border-line'}`}>
+                      <span className={`size-[18px] rounded-full border flex items-center justify-center ${isDone ? 'bg-[#1E6B3C] border-[#1E6B3C] text-white' : 'border-line'}`}>
                         {isDone && <Ic.Check width="11" height="11" />}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -885,7 +931,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 
       {/* Archivos */}
       {activeTab === 'files' && (
-        <div className="px-6 py-6 space-y-5">
+        <div className="p-6 space-y-5">
           <input
             ref={fileInputRef}
             type="file"
@@ -893,21 +939,23 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
             accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.txt,.csv"
             className="hidden"
             onChange={(e) => { if (e.target.files?.length) { addFiles(e.target.files); e.target.value = '' } }}
+            aria-label="Subir archivos"
           />
 
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
+          <button
+            type="button"
+            onDragOver={(e) => { e.preventDefault(); dispatch({ type: 'SET_DRAGGING', dragging: true }) }}
+            onDragLeave={() => dispatch({ type: 'SET_DRAGGING', dragging: false })}
+            onDrop={(e) => { e.preventDefault(); dispatch({ type: 'SET_DRAGGING', dragging: false }); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all select-none ${dragging ? 'border-zred bg-tint scale-[1.01]' : 'border-line hover:border-zred/50 hover:bg-soft/50'}`}>
-            <div className="w-12 h-12 rounded-full bg-soft flex items-center justify-center mx-auto mb-3">
+            <div className="size-12 rounded-full bg-soft flex items-center justify-center mx-auto mb-3">
               <Ic.Plus width="22" height="22" className="text-muted" />
             </div>
             <div className="text-[14px] font-semibold mb-1">Subir archivos</div>
             <div className="text-[12.5px] text-muted">Arrastra aquí o haz clic para seleccionar</div>
             <div className="text-[11.5px] text-muted mt-1">Imágenes · PDF · Word · Excel · PowerPoint · ZIP</div>
-          </div>
+          </button>
 
           {files.length === 0 ? (
             <div className="text-center py-6 text-[13px] text-muted">
@@ -923,12 +971,12 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
                   <div className="grid grid-cols-3 gap-3">
                     {images.map(f => (
                       <div key={f.id} className="group relative rounded-md overflow-hidden border border-line2 bg-soft" style={{ aspectRatio: '16/10' }}>
-                        <img src={f.url} alt={f.name} className="w-full h-full object-cover" />
+                        <Image src={f.url} alt={f.name} fill className="object-cover" unoptimized />
                         <div className="absolute inset-0 bg-carbon/0 group-hover:bg-carbon/45 transition-all" />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                          <button
+                          <button type="button" aria-label="Eliminar imagen"
                             onClick={(e) => { e.stopPropagation(); removeFile(f.id) }}
-                            className="w-8 h-8 rounded-full bg-white text-zred flex items-center justify-center shadow-pop">
+                            className="size-8 rounded-full bg-white text-zred flex items-center justify-center shadow-pop">
                             <Ic.Trash width="13" height="13" />
                           </button>
                         </div>
@@ -952,16 +1000,16 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
                       const ext = getExtLabel(f.type, f.name)
                       return (
                         <div key={f.id} className="group flex items-center gap-3 px-4 py-3 rounded-md border border-line2 hover:bg-soft/60 transition-colors">
-                          <div className="w-10 h-10 rounded-md bg-soft border border-line2 flex items-center justify-center shrink-0">
+                          <div className="size-10 rounded-md bg-soft border border-line2 flex items-center justify-center shrink-0">
                             <span className="text-[9.5px] font-bold text-muted tracking-wide">{ext}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-[13px] font-semibold truncate">{f.name}</div>
                             <div className="text-[11.5px] text-muted">{formatSize(f.size)}</div>
                           </div>
-                          <button
+                          <button type="button" aria-label="Eliminar archivo"
                             onClick={() => removeFile(f.id)}
-                            className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full hover:bg-tint text-muted hover:text-zred flex items-center justify-center transition-all">
+                            className="opacity-0 group-hover:opacity-100 size-8 rounded-full hover:bg-tint text-muted hover:text-zred flex items-center justify-center transition-all">
                             <Ic.Trash width="13" height="13" />
                           </button>
                         </div>
@@ -977,14 +1025,15 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 
       {/* Notas */}
       {activeTab === 'notes' && (
-        <div className="px-6 py-6">
+        <div className="p-6">
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-3">Notas del proyecto</div>
           <textarea
             value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            onChange={(e) => dispatch({ type: 'SET_NOTES', notes: e.target.value })}
             placeholder="Agrega contexto, links, requerimientos, decisiones importantes o cualquier documentación relevante del proyecto..."
             className="w-full rounded-md border border-line2 p-4 text-[13.5px] leading-relaxed resize-none outline-none focus:border-zred/50 focus:ring-2 focus:ring-zred/10 placeholder:text-muted transition-all"
             style={{ minHeight: '280px' }}
+            aria-label="Notas del proyecto"
           />
           <div className="flex items-center justify-between mt-3">
             <span className="text-[11.5px] text-muted">{notes.length} caracteres</span>
@@ -1000,6 +1049,11 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit }:
 }
 
 export function InviteModal({ open, onClose, onSave }: any) {
+  if (!open) return null
+  return <InviteForm key="invite" onClose={onClose} onSave={onSave} />
+}
+
+function InviteForm({ onClose, onSave }: any) {
   const [form, setForm] = useState({ email: '', role: 'editor' });
   const [sent, setSent] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -1008,10 +1062,6 @@ export function InviteModal({ open, onClose, onSave }: any) {
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
-
-  useEffect(() => {
-    if (!open) { setSent(false); setForm({ email: '', role: 'editor' }); if (timerRef.current) clearTimeout(timerRef.current); }
-  }, [open]);
 
   function submit() {
     const email = form.email.trim();
@@ -1030,7 +1080,7 @@ export function InviteModal({ open, onClose, onSave }: any) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Invitar al equipo" width={480}
+    <Modal open={true} onClose={onClose} title="Invitar al equipo" width={480}
       footer={
         sent ? (
           <span className="flex items-center gap-2 text-[13px] font-semibold text-[#1E6B3C]"><Ic.Check width="16" height="16"/> Invitación enviada a {form.email}</span>
@@ -1055,7 +1105,7 @@ export function InviteModal({ open, onClose, onSave }: any) {
             { value: 'viewer', label: 'Lectura — Solo visualizar' },
           ]} />
         <div className="rounded-md bg-tint border border-zred/15 p-3.5 flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-zred text-white flex items-center justify-center shrink-0">
+          <div className="size-8 rounded-full bg-zred text-white flex items-center justify-center shrink-0">
             <Ic.Mail width="15" height="15"/>
           </div>
           <div className="text-[12.5px] text-carbon leading-snug">
@@ -1070,12 +1120,14 @@ export function InviteModal({ open, onClose, onSave }: any) {
 
 
 export function PreferencesDrawer({ open, onClose, dark, onToggleDark }: any) {
-  const [density, setDensity] = useState('default');
+  if (!open) return null
+  return <PreferencesContent key="prefs" onClose={onClose} dark={dark} onToggleDark={onToggleDark} />
+}
 
-  useEffect(() => {
-    const saved = (() => { try { return localStorage.getItem('zivelo-density') || 'default'; } catch { return 'default'; } })();
-    setDensity(saved);
-  }, [open]);
+function PreferencesContent({ onClose, dark, onToggleDark }: any) {
+  const [density, setDensity] = useState(() => {
+    try { return localStorage.getItem('zivelo-density') || 'default'; } catch { return 'default'; }
+  });
 
   function changeDensity(v) {
     setDensity(v);
@@ -1083,14 +1135,8 @@ export function PreferencesDrawer({ open, onClose, dark, onToggleDark }: any) {
     document.documentElement.setAttribute('data-density', v);
   }
 
-  const DENSITIES = [
-    { id: 'compact', label: 'Compacto', desc: 'Menos espacio, más contenido' },
-    { id: 'default', label: 'Normal', desc: 'Espaciado predeterminado' },
-    { id: 'relaxed', label: 'Cómodo', desc: 'Más espacio para respirar' },
-  ];
-
   return (
-    <Drawer open={open} onClose={onClose} title="Preferencias" width={420}
+    <Drawer open={true} onClose={onClose} title="Preferencias" width={420}
       footer={<Button variant="ghost" size="sm" onClick={onClose}>Cerrar</Button>}>
       <div className="px-6 py-5 space-y-6">
         <div>
@@ -1098,9 +1144,9 @@ export function PreferencesDrawer({ open, onClose, dark, onToggleDark }: any) {
           <div className="rounded-md border border-line2 p-4">
             <div className="flex items-center justify-between mb-1">
               <div className="font-semibold text-[13.5px]">Tema oscuro</div>
-              <button onClick={onToggleDark}
+              <button type="button" onClick={onToggleDark} aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 className={`inline-flex items-center w-10 h-6 rounded-full transition-colors ${dark ? 'bg-zred' : 'bg-soft border border-line'}`}>
-                <span className={`w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${dark ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                <span className={`size-5 rounded-full bg-white transition-transform shadow-sm ${dark ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
               </button>
             </div>
             <p className="text-[12px] text-muted">{dark ? 'Modo oscuro activo' : 'Modo claro activo'}</p>
@@ -1111,11 +1157,11 @@ export function PreferencesDrawer({ open, onClose, dark, onToggleDark }: any) {
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-3">Densidad de interfaz</div>
           <div className="space-y-2">
             {DENSITIES.map(d => (
-              <button key={d.id} onClick={() => changeDensity(d.id)}
+              <button type="button" key={d.id} onClick={() => changeDensity(d.id)}
                 className={`w-full text-left p-3.5 rounded-md border transition-all ${density === d.id ? 'border-zred bg-tint' : 'border-line hover:border-zred/40'}`}>
                 <div className="flex items-center justify-between">
                   <div className="font-semibold text-[13.5px]">{d.label}</div>
-                  {density === d.id && <span className="w-5 h-5 rounded-full bg-zred text-white inline-flex items-center justify-center"><Ic.Check width="11" height="11"/></span>}
+                  {density === d.id && <span className="size-5 rounded-full bg-zred text-white inline-flex items-center justify-center"><Ic.Check width="11" height="11"/></span>}
                 </div>
                 <div className="text-[12px] text-muted mt-0.5">{d.desc}</div>
               </button>
@@ -1127,11 +1173,9 @@ export function PreferencesDrawer({ open, onClose, dark, onToggleDark }: any) {
   );
 }
 
-export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChange, onApply, onReset }: any) {
+export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChange, onApply, onReset, profiles = [] }: any) {
   if (!open) return null
   const tagKeys = Object.keys(TAG_STYLES)
-
-  function toggle(arr, v) { return arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v] }
 
   return (
     <Drawer open={open} onClose={onClose} title="Filtros avanzados" width={420}
@@ -1148,10 +1192,10 @@ export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChan
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-2">Asignados a</div>
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               const on = value.assignees.includes(u.id)
               return (
-                <button key={u.id} onClick={() => onChange({ ...value, assignees: toggle(value.assignees, u.id) })}
+                <button type="button" key={u.id} onClick={() => onChange({ ...value, assignees: toggle(value.assignees, u.id) })}
                   className={`flex items-center gap-2 pl-1 pr-3 h-9 rounded-full border transition-all ${on ? 'bg-carbon text-white border-carbon' : 'bg-white border-line hover:border-zred/40'}`}>
                   <Avatar user={u} size={26} />
                   <span className="text-[12.5px] font-semibold">{u.name.split(' ')[0]}</span>
@@ -1169,7 +1213,7 @@ export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChan
                 {tagKeys.map(k => {
                   const on = value.tags.includes(k)
                   return (
-                    <button key={k} onClick={() => onChange({ ...value, tags: toggle(value.tags, k) })}
+                    <button type="button" key={k} onClick={() => onChange({ ...value, tags: toggle(value.tags, k) })}
                       className={`px-3 h-8 rounded-full border text-[12.5px] font-semibold transition-all ${on ? 'bg-carbon text-white border-carbon' : 'bg-white text-carbon border-line hover:border-zred/40'}`}>
                       {TAG_STYLES[k].label}
                     </button>
@@ -1185,9 +1229,9 @@ export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChan
                   const on = value.priorities.includes(k)
                   const p = PRIORITY[k]
                   return (
-                    <button key={k} onClick={() => onChange({ ...value, priorities: toggle(value.priorities, k) })}
+                    <button type="button" key={k} onClick={() => onChange({ ...value, priorities: toggle(value.priorities, k) })}
                       className={`inline-flex items-center gap-2 px-3 h-9 rounded-full border text-[12.5px] font-semibold transition-all ${on ? 'bg-carbon text-white border-carbon' : 'bg-white text-carbon border-line hover:border-zred/40'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${p.dot}`} />
+                      <span className={`size-1.5 rounded-full ${p.dot}`} />
                       {p.label}
                     </button>
                   )
@@ -1199,7 +1243,7 @@ export function FiltersDrawer({ open, onClose, context = 'kanban', value, onChan
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-2">Vencimiento</div>
               <div className="flex flex-wrap gap-2">
                 {[{ k: 'all', l: 'Cualquier fecha' }, { k: 'overdue', l: 'Atrasadas' }, { k: 'today', l: 'Hoy' }, { k: 'week', l: 'Esta semana' }, { k: 'none', l: 'Sin fecha' }].map(o => (
-                  <button key={o.k} onClick={() => onChange({ ...value, due: o.k })}
+                  <button type="button" key={o.k} onClick={() => onChange({ ...value, due: o.k })}
                     className={`px-3 h-9 rounded-full border text-[12.5px] font-semibold transition-all ${value.due === o.k ? 'bg-carbon text-white border-carbon' : 'bg-white text-carbon border-line hover:border-zred/40'}`}>
                     {o.l}
                   </button>
@@ -1267,12 +1311,12 @@ export function KeyboardShortcutsModal({ open, onClose }: any) {
           <div key={section.title}>
             <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted mb-2 px-1">{section.title}</div>
             <div className="bg-soft/50 rounded-lg overflow-hidden divide-y divide-line2">
-              {section.items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-2.5">
+              {section.items.map(item => (
+                <div key={item.label} className="flex items-center justify-between px-4 py-2.5">
                   <span className="text-[13.5px] text-carbon">{item.label}</span>
                   <div className="flex items-center gap-1">
-                    {item.keys.map((k, j) => (
-                      <kbd key={j}
+                    {item.keys.map(k => (
+                      <kbd key={k}
                         className="font-mono text-[11px] text-carbon bg-white border border-line2 shadow-soft rounded px-2 py-0.5 min-w-[28px] text-center">
                         {k}
                       </kbd>

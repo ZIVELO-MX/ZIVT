@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
 function parseIsoDate(iso) {
@@ -38,14 +38,14 @@ export function CustomSelect({ label, options, value, onChange, placeholder = 'S
 
   const selected = useMemo(() => options.find(o => o.value === value), [options, value])
 
-  function updateCoords() {
+  const updateCoords = useCallback(() => {
     const r = triggerRef.current?.getBoundingClientRect()
     if (!r) return
     const needed = Math.min(280, options.length * 36 + 16)
     const spaceBelow = window.innerHeight - r.bottom
     const dropUp = spaceBelow < needed && r.top > needed
     setCoords({ left: r.left, top: dropUp ? r.top - 6 : r.bottom + 6, width: r.width, dropUp })
-  }
+  }, [options.length])
 
   useEffect(() => {
     function onDoc(e) {
@@ -63,12 +63,7 @@ export function CustomSelect({ label, options, value, onChange, placeholder = 'S
       window.removeEventListener('resize', onResize)
       window.removeEventListener('scroll', onResize, true)
     }
-  }, [open])
-
-  useEffect(() => {
-    if (open) { updateCoords(); setFocusIdx(options.findIndex(o => o.value === value)) }
-    // eslint-disable-next-line
-  }, [open])
+  }, [open, updateCoords])
 
   function commit(idx) {
     const opt = options[idx]
@@ -95,7 +90,7 @@ export function CustomSelect({ label, options, value, onChange, placeholder = 'S
         ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { const next = !open; setOpen(next); if (next) { updateCoords(); setFocusIdx(options.findIndex(o2 => o2.value === value)) } }}
         onKeyDown={onKey}
         className={`group relative w-full h-11 px-4 pr-10 rounded-md border border-line bg-white text-[14px] text-left flex items-center transition-all
           ${open ? 'border-zred shadow-[0_0_0_4px_rgba(215,34,40,0.12)]' : 'hover:border-zred/50'}
@@ -138,7 +133,7 @@ export function CustomSelect({ label, options, value, onChange, placeholder = 'S
                   ${isFoc ? 'bg-tint' : ''}
                   ${isSel ? 'font-semibold text-carbon' : 'text-carbon'}`}
               >
-                {o.swatch && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: o.swatch }} />}
+                {o.swatch && <span className="size-2 rounded-full shrink-0" style={{ background: o.swatch }} />}
                 <span className="flex-1 truncate">{o.label}</span>
                 {isSel && (
                   <span className="text-zred">
@@ -165,8 +160,6 @@ export function CustomDatePicker({ label, value, onChange, placeholder = 'Selecc
   const sel = parseIsoDate(value)
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const [view, setView] = useState(() => sel || today)
-
-  useEffect(() => { if (open) setView(sel || today) /* eslint-disable-next-line */ }, [open])
 
   function updateCoords() {
     const r = triggerRef.current?.getBoundingClientRect()
@@ -197,8 +190,6 @@ export function CustomDatePicker({ label, value, onChange, placeholder = 'Selecc
       window.removeEventListener('scroll', onResize, true)
     }
   }, [open])
-
-  useEffect(() => { if (open) updateCoords() /* eslint-disable-next-line */ }, [open])
 
   function commit(d) {
     onChange({ target: { value: fmtIso(d) } })
@@ -232,7 +223,7 @@ export function CustomDatePicker({ label, value, onChange, placeholder = 'Selecc
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { const next = !open; setOpen(next); if (next) { updateCoords(); setView(sel || today) } }}
         className={`group relative w-full h-11 pl-10 pr-4 rounded-md border border-line bg-white text-[14px] text-left transition-all
           ${open ? 'border-zred shadow-[0_0_0_4px_rgba(215,34,40,0.12)]' : 'hover:border-zred/50'}`}
       >
@@ -258,31 +249,31 @@ export function CustomDatePicker({ label, value, onChange, placeholder = 'Selecc
         >
           <div className="flex items-center justify-between mb-2.5">
             <button type="button" onClick={() => setView(new Date(year, month - 1, 1))}
-              className="w-8 h-8 rounded-md text-muted hover:text-zred inline-flex items-center justify-center" aria-label="Anterior">
+              className="size-8 rounded-md text-muted hover:text-zred inline-flex items-center justify-center" aria-label="Anterior">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m15 6-6 6 6 6" /></svg>
             </button>
             <div className="text-[13px] font-bold tracking-tight">
               {MONTHS_ES[month]} <span className="text-muted nums font-semibold">{year}</span>
             </div>
             <button type="button" onClick={() => setView(new Date(year, month + 1, 1))}
-              className="w-8 h-8 rounded-md text-muted hover:text-zred inline-flex items-center justify-center" aria-label="Siguiente">
+              className="size-8 rounded-md text-muted hover:text-zred inline-flex items-center justify-center" aria-label="Siguiente">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m9 6 6 6-6 6" /></svg>
             </button>
           </div>
 
           <div className="grid grid-cols-7 mb-1">
             {WEEKDAYS_ES.map((w, i) => (
-              <div key={i} className="text-center text-[10.5px] font-bold uppercase tracking-wider text-muted py-1.5">{w}</div>
+              <div key={`${w}-${i}`} className="text-center text-[10.5px] font-bold uppercase tracking-wider text-muted py-1.5">{w}</div>
             ))}
           </div>
 
           <div className="grid grid-cols-7 gap-0.5">
-            {cells.map(({ d, outside }, i) => {
+            {cells.map(({ d, outside }) => {
               const isToday = sameDay(d, today)
               const isSel = sel && sameDay(d, sel)
               return (
                 <button
-                  key={i}
+                  key={fmtIso(d)}
                   type="button"
                   onClick={() => commit(d)}
                   className={`relative h-9 rounded-md text-[12.5px] font-medium nums transition-colors
@@ -304,7 +295,7 @@ export function CustomDatePicker({ label, value, onChange, placeholder = 'Selecc
                 Hoy
               </button>
               <button type="button" onClick={() => setOpen(false)}
-                className="px-3 h-8 rounded-full bg-carbon text-white text-[12.5px] font-semibold hover:bg-black transition-colors">
+                className="px-3 h-8 rounded-full bg-carbon text-white text-[12.5px] font-semibold hover:bg-[#1a1a1a] transition-colors">
                 Cerrar
               </button>
             </div>

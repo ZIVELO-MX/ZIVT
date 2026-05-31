@@ -21,11 +21,15 @@ export function AvatarStack({ users, max = 4, size = 26 }: any) {
   const visible = users.slice(0, max)
   const extra = users.length - visible.length
   return (
-    <div className="flex -space-x-2">
-      {visible.map(u => <Avatar key={u.id} user={u} size={size} ring />)}
+    <div className="flex gap-0">
+      {visible.map((u, i) => (
+        <div key={u.id} className={i > 0 ? '-ml-2' : ''}>
+          <Avatar user={u} size={size} ring />
+        </div>
+      ))}
       {extra > 0 && (
         <div
-          className="inline-flex items-center justify-center rounded-full bg-soft text-carbon font-semibold ring-2 ring-white dark:ring-[#1A1A18]"
+          className="inline-flex items-center justify-center rounded-full bg-soft text-carbon font-semibold ring-2 ring-white dark:ring-[#1A1A18] -ml-2"
           style={{ width: size, height: size, fontSize: size * 0.4 }}
         >
           +{extra}
@@ -43,19 +47,20 @@ export function Badge({ children, className = '' }: any) {
   )
 }
 
+const BUTTON_SIZES = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-[14px]', lg: 'h-12 px-5 text-[15px]' }
+const BUTTON_VARIANTS = {
+  primary: 'bg-zred text-white hover:shadow-red hover:-translate-y-px',
+  secondary: 'bg-white text-carbon border border-line hover:border-zred hover:text-zred',
+  ghost: 'bg-transparent text-carbon hover:bg-soft',
+  dark: 'bg-carbon text-white hover:bg-black',
+  danger: 'bg-white text-zred border border-tint hover:bg-tint',
+}
+
 export function Button({ children, variant = 'primary', size = 'md', className = '', ...rest }: any) {
-  const sizes = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-[14px]', lg: 'h-12 px-5 text-[15px]' }
-  const variants = {
-    primary: 'bg-zred text-white hover:shadow-red hover:-translate-y-px',
-    secondary: 'bg-white text-carbon border border-line hover:border-zred hover:text-zred',
-    ghost: 'bg-transparent text-carbon hover:bg-soft',
-    dark: 'bg-carbon text-white hover:bg-black',
-    danger: 'bg-white text-zred border border-tint hover:bg-tint',
-  }
   return (
-    <button
+    <button type="button"
       {...rest}
-      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ${sizes[size]} ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ${BUTTON_SIZES[size]} ${BUTTON_VARIANTS[variant]} ${className}`}
     >
       {children}
     </button>
@@ -64,9 +69,9 @@ export function Button({ children, variant = 'primary', size = 'md', className =
 
 export function IconButton({ children, className = '', ...rest }: any) {
   return (
-    <button
+    <button type="button"
       {...rest}
-      className={`inline-flex items-center justify-center w-9 h-9 rounded-full border border-line bg-white text-carbon hover:border-zred hover:text-zred transition-colors ${className}`}
+      className={`inline-flex items-center justify-center size-9 rounded-full border border-line bg-white text-carbon hover:border-zred hover:text-zred transition-colors ${className}`}
     >
       {children}
     </button>
@@ -132,14 +137,14 @@ export function Drawer({ open, onClose, title, children, footer, width = 460 }: 
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-carbon/30 fade-in" onClick={onClose} />
+      <button type="button" className="absolute inset-0 bg-carbon/30 fade-in cursor-default" onClick={onClose} aria-label="Cerrar" onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }} />
       <div
         className="absolute right-0 top-0 h-full bg-white border-l border-line shadow-pop flex flex-col"
         style={{ width, animation: 'drawer-in 280ms cubic-bezier(.2,.8,.2,1)' }}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
           <h3 className="font-semibold text-[16px]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
             <Ic.X width="18" height="18" />
           </button>
         </div>
@@ -160,11 +165,11 @@ export function Modal({ open, onClose, title, children, footer, width = 520 }: a
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-carbon/30 fade-in" onClick={onClose} />
+      <button type="button" className="absolute inset-0 bg-carbon/30 fade-in cursor-default" onClick={onClose} aria-label="Cerrar" onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }} />
       <div className="relative bg-white rounded-lg shadow-pop border border-line2 pop-in flex flex-col max-h-[88vh]" style={{ width }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
           <h3 className="font-semibold text-[16px]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
             <Ic.X width="18" height="18" />
           </button>
         </div>

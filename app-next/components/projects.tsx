@@ -1,19 +1,19 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState, useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, ProgressBar, Avatar, AvatarStack } from './ui'
-import { STATUS_LABEL, TEAM, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import { ConfirmDialog, NewProjectModal, ProjectDetailDrawer } from './modals'
-import { getProjects, createProject, deleteProject } from '@/lib/supabase/queries'
+import { createProject, deleteProject } from '@/lib/supabase/queries'
 
-function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon }: any) {
+function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon, profiles = [] }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const client = clients.find(c => c.id === project.client);
   const status = STATUS_LABEL[project.status];
-  const team = project.team.map(id => TEAM.find(u => u.id === id)).filter(Boolean);
+  const team = project.team.flatMap(id => { const u = profiles.find(t => t.id === id); return u ? [u] : [] });
   const days = daysUntil(project.due);
   const overdue = days < 0 && project.status !== 'done';
 
@@ -49,18 +49,18 @@ function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, on
           </p>
         </div>
         <div ref={menuRef} className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => setMenuOpen(open => !open)} className="w-8 h-8 rounded-full hover:bg-soft flex items-center justify-center text-muted shrink-0">
+          <button type="button" onClick={() => setMenuOpen(open => !open)} className="size-8 rounded-full hover:bg-soft flex items-center justify-center text-muted shrink-0">
             <Ic.Dots width="16" height="16"/>
           </button>
             {menuOpen && (
               <div className="absolute right-0 top-9 z-30 w-40 rounded-md border border-line2 bg-white shadow-pop p-1 pop-in">
-                <button onClick={() => run(() => onOpen(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => run(() => onOpen(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Edit width="13" height="13" className="text-muted"/> Ver detalle
                 </button>
-                <button onClick={() => run(() => onDuplicate(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => run(() => onDuplicate(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Plus width="13" height="13" className="text-muted"/> Duplicar
                 </button>
-                <button onClick={() => run(() => onDelete(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-zred text-left">
+                <button type="button" onClick={() => run(() => onDelete(project))} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-zred text-left">
                   <Ic.Trash width="13" height="13"/> Eliminar
                 </button>
               </div>
@@ -105,28 +105,13 @@ function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, on
   );
 }
 
-export default function Projects({ projects, setProjects, clients, tasks, setTasks, teams, setTeams }) {
+export default function Projects({ projects, setProjects, clients, tasks, setTasks, teams, setTeams, profiles = [] }: any) {
   const router = useRouter();
-  const [filter, setFilter] = useState('all');
-  const [search, setSearch] = useState('');
-  const [view, setView] = useState('grid');
-  const [newOpen, setNewOpen] = useState(false);
-  const [openDetail, setOpenDetail] = useState(null);
-  const [confirmDel, setConfirmDel] = useState(null);
-  const [toast, setToast] = useState('');
+  const [page, setPage] = useReducer(
+    (prev: any, next: any) => ({ ...prev, ...next }),
+    { filter: 'all', search: '', view: 'grid', newOpen: false, openDetail: null, confirmDel: null, toast: '' }
+  );
   const toastRef = useRef(null);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getProjects()
-        if (data.length > 0) setProjects(data)
-      } catch {
-        // Fall back to mock data from props
-      }
-    }
-    load()
-  }, [])
 
   const counts = {
     all: projects.length,
@@ -136,9 +121,10 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
     done: projects.filter(p => p.status === 'done').length,
   };
 
-  const filtered = projects
-    .filter(p => filter === 'all' ? true : p.status === filter)
-    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = projects.filter(p =>
+    (page.filter === 'all' ? true : p.status === page.filter) &&
+    p.name.toLowerCase().includes(page.search.toLowerCase())
+  );
 
   const totalBudget = projects.reduce((s,p) => s + p.budget, 0);
   const totalSpent = projects.reduce((s,p) => s + p.spent, 0);
@@ -146,9 +132,9 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
   const atRisk = projects.filter(p => p.health === 'at_risk').length;
 
   function showToast(message) {
-    setToast(message);
+    setPage({ toast: message });
     if (toastRef.current) clearTimeout(toastRef.current);
-    toastRef.current = window.setTimeout(() => setToast(''), 2200);
+    toastRef.current = window.setTimeout(() => setPage({ toast: '' }), 2200);
   }
   async function duplicateProject(project) {
     const newProject = {
@@ -188,8 +174,8 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
     }
   }
   async function confirmDelete() {
-    const target = confirmDel
-    setConfirmDel(null)
+    const target = page.confirmDel
+    setPage({ confirmDel: null })
     if (!target) return
     try {
       await deleteProject(target.id)
@@ -197,7 +183,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
       // Fallback: just remove from local state
     }
     setProjects(prev => prev.filter(p => p.id !== target.id))
-    if (openDetail?.id === target.id) setOpenDetail(null)
+    if (page.openDetail?.id === target.id) setPage({ openDetail: null })
     router.refresh()
     showToast('Proyecto eliminado.')
   }
@@ -212,9 +198,9 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
 
   return (
     <div className="px-8 py-6 space-y-6">
-      {toast && (
+      {page.toast && (
         <div className="fixed right-6 bottom-6 z-[80] rounded-md bg-carbon text-white shadow-pop px-4 py-3 text-[13px] font-semibold pop-in">
-          {toast}
+          {page.toast}
         </div>
       )}
 
@@ -244,58 +230,59 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1">
           {tabs.map(t => (
-            <button key={t.id} onClick={()=>setFilter(t.id)}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+            <button type="button" key={t.id} onClick={()=>setPage({ filter: t.id })}
+              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
               {t.label}
-              <span className={`px-1.5 rounded-full text-[10.5px] nums ${filter===t.id?'bg-white/15':'bg-soft'}`}>{t.count}</span>
+              <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.filter===t.id?'bg-white/15':'bg-soft'}`}>{t.count}</span>
             </button>
           ))}
         </div>
 
         <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line">
           <Ic.Search width="14" height="14" className="text-muted"/>
-          <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Buscar..." className="bg-transparent outline-none text-[13px] w-44"/>
+          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar..." aria-label="Buscar proyectos" className="bg-transparent outline-none text-[13px] w-44"/>
         </div>
 
         <div className="flex-1"/>
 
         <div className="flex items-center bg-white border border-line rounded-full p-1">
-          <button onClick={()=>setView('grid')} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${view==='grid'?'bg-carbon text-white':'text-muted'}`}>Grid</button>
-          <button onClick={()=>setView('table')} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${view==='table'?'bg-carbon text-white':'text-muted'}`}>Tabla</button>
+          <button type="button" onClick={()=>setPage({ view: 'grid' })} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${page.view==='grid'?'bg-carbon text-white':'text-muted'}`}>Grid</button>
+          <button type="button" onClick={()=>setPage({ view: 'table' })} className={`px-3 h-8 rounded-full text-[12px] font-semibold ${page.view==='table'?'bg-carbon text-white':'text-muted'}`}>Tabla</button>
         </div>
 
-        <Button variant="primary" onClick={() => setNewOpen(true)}><Ic.Plus width="15" height="15"/> Nuevo proyecto</Button>
+        <Button variant="primary" onClick={() => setPage({ newOpen: true })}><Ic.Plus width="15" height="15"/> Nuevo proyecto</Button>
       </div>
 
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-4">
+          <div className="size-16 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-4">
             <Ic.Folder width="28" height="28"/>
           </div>
           <h3 className="text-[18px] font-bold tracking-tight mb-1">
-            {search || filter !== 'all' ? 'Sin resultados' : 'No hay proyectos aún'}
+            {page.search || page.filter !== 'all' ? 'Sin resultados' : 'No hay proyectos aún'}
           </h3>
           <p className="text-[14px] text-muted mb-4">
-            {search || filter !== 'all'
+            {page.search || page.filter !== 'all'
               ? 'Intenta con otros filtros o términos de búsqueda.'
               : 'Crea tu primer proyecto para empezar a gestionar tu cartera.'}
           </p>
-          {!search && filter === 'all' && (
-            <Button variant="primary" onClick={() => setNewOpen(true)}>
+          {!page.search && page.filter === 'all' && (
+            <Button variant="primary" onClick={() => setPage({ newOpen: true })}>
               <Ic.Plus width="15" height="15"/> Nuevo proyecto
             </Button>
           )}
         </div>
-      ) : view === 'grid' ? (
+      ) : page.view === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(p => (
             <ProjectMetricCard
               key={p.id}
               project={p}
               clients={clients}
-              onOpen={setOpenDetail}
+              profiles={profiles}
+              onOpen={(p) => setPage({ openDetail: p })}
               onDuplicate={duplicateProject}
-              onDelete={setConfirmDel}
+              onDelete={(p) => setPage({ confirmDel: p })}
               onSoon={showToast}
             />
           ))}
@@ -318,10 +305,10 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
               {filtered.map(p => {
                 const c = clients.find(cl => cl.id === p.client);
                 const status = STATUS_LABEL[p.status];
-                const team = p.team.map(id => TEAM.find(u => u.id === id)).filter(Boolean);
+                const team = p.team.flatMap(id => { const u = profiles.find(t => t.id === id); return u ? [u] : [] });
                 const days = daysUntil(p.due);
                 return (
-                  <tr key={p.id} onClick={() => setOpenDetail(p)} className="border-b border-line2 hover:bg-soft/50 transition-colors cursor-pointer">
+                  <tr key={p.id} onClick={() => setPage({ openDetail: p })} className="border-b border-line2 hover:bg-soft/50 transition-colors cursor-pointer">
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
                         <span className="w-1.5 h-8 rounded-full" style={{background: p.accent}}/>
@@ -356,11 +343,12 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
       )}
 
       <NewProjectModal
-        open={newOpen}
+        open={page.newOpen}
         clients={clients}
         teams={teams}
         setTeams={setTeams}
-        onClose={() => setNewOpen(false)}
+        profiles={profiles}
+        onClose={() => setPage({ newOpen: false })}
         onCreate={async (p, templateTasks) => {
           try {
             const created = await createProject({ ...p, tasksTotal: templateTasks?.length ?? 0 })
@@ -373,15 +361,15 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
           }
         }}
       />
-      <ProjectDetailDrawer open={!!openDetail} project={openDetail} clients={clients} onClose={() => setOpenDetail(null)}/>
+      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} onClose={() => setPage({ openDetail: null })}/>
       <ConfirmDialog
-        open={!!confirmDel}
+        open={!!page.confirmDel}
         title="¿Eliminar este proyecto?"
-        message={confirmDel ? `Estás a punto de eliminar ${confirmDel.name}. Esta acción no se puede deshacer.` : ''}
+        message={page.confirmDel ? `Estás a punto de eliminar ${page.confirmDel.name}. Esta acción no se puede deshacer.` : ''}
         confirmLabel="Sí, eliminar"
         cancelLabel="Cancelar"
         onConfirm={confirmDelete}
-        onCancel={() => setConfirmDel(null)}
+        onCancel={() => setPage({ confirmDel: null })}
       />
     </div>
   );
