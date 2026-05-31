@@ -307,7 +307,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
               {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
             </div>
             <h2 className="text-[22px] md:text-[32px] font-extrabold tracking-tight leading-tight mb-2">
-              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'Raúl'}.
+              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'bienvenido'}.
             </h2>
             <p className="text-white/70 text-[15px] leading-relaxed max-w-[460px]">
               Tienes <span className="text-white font-semibold">{inProgress} tareas activas</span> y{' '}

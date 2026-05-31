@@ -225,7 +225,7 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
         <Avatar user={user} size={44} />
         <div className="min-w-0">
           <div className="font-bold text-[14px] truncate">{user.name}</div>
-          <div className="text-[12px] text-muted truncate">{user.email || 'raul@zivelo.dev'}</div>
+          <div className="text-[12px] text-muted truncate">{user.email}</div>
         </div>
       </div>
       
@@ -404,7 +404,7 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
     client: presetClient?.id || '',
     status: 'todo',
     start: new Date().toISOString().slice(0, 10), due: '',
-    budget: 0, team: ['u1'], accent: '#D72228',
+    budget: 0, team: [], accent: '#D72228',
   })
   const [useTemplate, setUseTemplate] = useState(true)
 

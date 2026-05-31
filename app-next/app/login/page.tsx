@@ -109,7 +109,7 @@ export default function LoginPage() {
                     type="email"
                     required
                     autoComplete="username"
-                    placeholder="raul@zivelo.dev"
+                    placeholder="tu@correo.com"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full h-12 pl-11 pr-4 rounded-md border border-line bg-white text-[14px] placeholder:text-muted/70 transition-all"
