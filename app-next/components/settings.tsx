@@ -46,6 +46,18 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 
 function AccountSection({ toast }: { toast: (msg: string) => void }) {
   const user = useCurrentProfile()
+
+  if (!user) {
+    return (
+      <div>
+        <SectionHeading>Cuenta</SectionHeading>
+        <div className="bg-white border border-line2 rounded-lg overflow-hidden p-8 text-center text-muted">
+          Cargando información de la cuenta...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <SectionHeading>Cuenta</SectionHeading>
