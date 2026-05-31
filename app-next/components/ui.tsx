@@ -140,16 +140,16 @@ export function Drawer({ open, onClose, title, children, footer, width = 460 }: 
       <button type="button" className="absolute inset-0 bg-carbon/30 fade-in cursor-default" onClick={onClose} aria-label="Cerrar" onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }} />
       <div
         className="absolute right-0 top-0 h-full bg-white border-l border-line shadow-pop flex flex-col"
-        style={{ width, animation: 'drawer-in 280ms cubic-bezier(.2,.8,.2,1)' }}
+        style={{ width: 'min(460px, 100vw)', animation: 'drawer-in 280ms cubic-bezier(.2,.8,.2,1)' }}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-line2">
           <h3 className="font-semibold text-[16px]">{title}</h3>
-          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center shrink-0">
             <Ic.X width="18" height="18" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto scroll-thin">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-line2 bg-white">{footer}</div>}
+        {footer && <div className="px-4 sm:px-6 py-4 border-t border-line2 bg-white">{footer}</div>}
       </div>
     </div>
   )
@@ -166,15 +166,15 @@ export function Modal({ open, onClose, title, children, footer, width = 520 }: a
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button type="button" className="absolute inset-0 bg-carbon/30 fade-in cursor-default" onClick={onClose} aria-label="Cerrar" onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') onClose() }} />
-      <div className="relative bg-white rounded-lg shadow-pop border border-line2 pop-in flex flex-col max-h-[88vh]" style={{ width }}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-line2">
+      <div className="relative bg-white rounded-lg shadow-pop border border-line2 pop-in flex flex-col max-h-[88vh] w-full sm:w-auto" style={{ maxWidth: 'min(520px, 100%)' }}>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-line2">
           <h3 className="font-semibold text-[16px]">{title}</h3>
-          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center shrink-0">
             <Ic.X width="18" height="18" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto scroll-thin px-6 py-5">{children}</div>
-        {footer && <div className="px-6 py-4 border-t border-line2 flex justify-end gap-2">{footer}</div>}
+        <div className="flex-1 overflow-y-auto scroll-thin px-4 sm:px-6 py-5">{children}</div>
+        {footer && <div className="px-4 sm:px-6 py-4 border-t border-line2 flex justify-end gap-2 flex-wrap">{footer}</div>}
       </div>
     </div>
   )

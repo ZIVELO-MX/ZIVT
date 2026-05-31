@@ -19,14 +19,14 @@ function ClientForm({ client, onChange }: any) {
   return (
     <div className="space-y-4">
       <Input label="Empresa" placeholder="Nombre del negocio" value={client.name} onChange={(e)=>set('name', e.target.value)}/>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Select label="Industria" value={client.industry} onChange={(e)=>set('industry', e.target.value)}
           options={INDUSTRIES.map(i => ({ value: i, label: i }))}/>
         <Select label="Estado" value={client.status} onChange={(e)=>set('status', e.target.value)}
           options={[{value:'active',label:'Activo'},{value:'lead',label:'Prospecto'},{value:'paused',label:'Pausado'}]}/>
       </div>
       <Input label="Persona de contacto" placeholder="Ej. Lucía Romano" value={client.contact} onChange={(e)=>set('contact', e.target.value)}/>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input label="Email" type="email" placeholder="contacto@empresa.com" value={client.email} onChange={(e)=>set('email', e.target.value)}/>
         <Input label="Teléfono" placeholder="+52 ..." value={client.phone} onChange={(e)=>set('phone', e.target.value)}/>
       </div>

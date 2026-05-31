@@ -488,14 +488,14 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Select label="Tipo" value={form.kind} onChange={(e) => set('kind', e.target.value)}
             options={['Web development', 'Point of sale', 'Restaurant solutions', 'Web app', 'Producto interno', 'Consultoría', 'Otro'].map(v => ({ value: v, label: v }))} />
           <Select label="Cliente (opcional)" value={form.client} onChange={(e) => set('client', e.target.value)}
             options={[{ value: '', label: '— Proyecto interno —' }, ...clients.map(c => ({ value: c.id, label: c.name }))]} />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <CustomDatePicker label="Inicio" value={form.start} onChange={(e) => set('start', e.target.value)} />
           <CustomDatePicker label="Entrega" value={form.due} onChange={(e) => set('due', e.target.value)} />
           <Input label="Presupuesto (MXN)" type="number" placeholder="0" value={form.budget} onChange={(e) => set('budget', e.target.value)} />
