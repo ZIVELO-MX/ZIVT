@@ -191,14 +191,14 @@ export default function HomePage() {
         profiles={profiles}
         onMarkRead={(id) => {
           setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-          markNotificationRead(id).catch(() => {});
+          markNotificationRead(id).catch(e => console.error('markNotificationRead failed:', e));
         }}
         onMarkAllRead={() => {
           setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
-          markAllNotificationsRead().catch(() => {});
+          markAllNotificationsRead().catch(e => console.error('markAllNotificationsRead failed:', e));
         }}
       />
-      <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)}/>
+      <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} onSave={(user) => setProfiles(prev => [...prev, user])} />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)}/>
       <PreferencesDrawer open={prefsOpen} onClose={() => setPrefsOpen(false)} dark={dark} onToggleDark={() => setDark(d => !d)}/>
     </div>

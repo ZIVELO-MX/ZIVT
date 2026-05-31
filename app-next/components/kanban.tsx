@@ -867,7 +867,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
         onCreate={async (t) => {
           try {
             const created = await createTask(t);
-            setTasks(prev => prev.map(x => x.id === t.id ? created : x));
+            setTasks(prev => [created, ...prev]);
             notifyTaskCreated(created.title, currentUser?.id ?? '');
           } catch {
             setTasks(prev => [...prev, t]);

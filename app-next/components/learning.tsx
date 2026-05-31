@@ -5,6 +5,7 @@ import { Ic } from '@/components/icons'
 import { Avatar, AvatarStack, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui'
 import { ConfirmDialog } from '@/components/modals'
 import { LEARNING_COLS, LEARNING_RESOURCE, formatDate, daysUntil } from '@/lib/constants'
+import { createLearningTask, updateLearningTask, deleteLearningTask } from '@/lib/supabase/queries'
 import type { LearningTask, LearningResourceType } from '@/lib/supabase/types'
 
 // ─── Resource type icon ────────────────────────────────────────────────────────
@@ -500,33 +501,46 @@ export default function Learning({ tasks, setTasks, profiles = [] }: { tasks: Le
   function onDragEnd() { dispatch({ type: 'DRAG_END' }) }
   function onDragOver(e: React.DragEvent, colId: string) { e.preventDefault(); dispatch({ type: 'DRAG_OVER', colId }) }
   function onDragLeave() { dispatch({ type: 'DRAG_LEAVE' }) }
-  function onDrop(e: React.DragEvent, colId: string) {
+  async function onDrop(e: React.DragEvent, colId: string) {
     e.preventDefault()
     if (!draggingId) return
-    setTasks(tasks.map(t => {
-      if (t.id !== draggingId) return t
-      if (colId === 'done') {
-        const prog = { ...t.progress }
-        t.assignee.forEach(uid => { prog[uid] = 'done' })
-        return { ...t, col: colId as LearningTask['col'], progress: prog }
-      }
-      return { ...t, col: colId as LearningTask['col'] }
-    }))
+    const task = tasks.find(t => t.id === draggingId)
+    if (!task) return
+    const updated = { ...task, col: colId as LearningTask['col'] }
+    if (colId === 'done') {
+      const prog = { ...task.progress }
+      task.assignee.forEach(uid => { prog[uid] = 'done' })
+      updated.progress = prog
+    }
+    setTasks(tasks.map(t => t.id === draggingId ? updated : t))
     dispatch({ type: 'DRAG_END' })
+    try { await updateLearningTask(draggingId, { col: updated.col, progress: updated.progress }) }
+    catch { setTasks(tasks) }
   }
 
-  function handleUpdate(updated: LearningTask) {
+  async function handleUpdate(updated: LearningTask) {
+    const snapshot = tasks
     setTasks(tasks.map(t => t.id === updated.id ? updated : t))
     dispatch({ type: 'SELECT', task: updated })
+    try { await updateLearningTask(updated.id, updated) }
+    catch { setTasks(snapshot) }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
+    const snapshot = tasks
     setTasks(tasks.filter(t => t.id !== id))
     dispatch({ type: 'SELECT', task: null })
+    try { await deleteLearningTask(id) }
+    catch { setTasks(snapshot) }
   }
 
-  function handleCreate(task: LearningTask) {
-    setTasks([...tasks, task])
+  async function handleCreate(task: LearningTask) {
+    try {
+      const created = await createLearningTask(task)
+      setTasks([...tasks, created])
+    } catch {
+      setTasks([...tasks, task])
+    }
   }
 
   return (

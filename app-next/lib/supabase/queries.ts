@@ -3,6 +3,7 @@ import {
   clientRowToClient,
   clientToClientRow,
   learningTaskRowToLearningTask,
+  learningTaskToLearningTaskRow,
   notificationRowToNotification,
   profileRowToProfile,
   profileToProfileRow,
@@ -226,4 +227,38 @@ export async function getLearningTasks(): Promise<LearningTask[]> {
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map(learningTaskRowToLearningTask)
+}
+
+export async function createLearningTask(data: Partial<LearningTask>): Promise<LearningTask> {
+  const supabase = createSupabaseClient()
+  const row = learningTaskToLearningTaskRow({ id: crypto.randomUUID(), ...data })
+  const { data: inserted, error } = await supabase
+    .from('learning_tasks')
+    .insert(row)
+    .select()
+    .single()
+  if (error) throw error
+  return learningTaskRowToLearningTask(inserted)
+}
+
+export async function updateLearningTask(id: string, data: Partial<LearningTask>): Promise<LearningTask> {
+  const supabase = createSupabaseClient()
+  const row = learningTaskToLearningTaskRow(data)
+  const { data: updated, error } = await supabase
+    .from('learning_tasks')
+    .update(row)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return learningTaskRowToLearningTask(updated)
+}
+
+export async function deleteLearningTask(id: string): Promise<void> {
+  const supabase = createSupabaseClient()
+  const { error } = await supabase
+    .from('learning_tasks')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
 }

@@ -536,6 +536,22 @@ export function learningTaskRowToLearningTask(row: LearningTaskRow): LearningTas
   }
 }
 
+export function learningTaskToLearningTaskRow(task: Partial<LearningTask>): Partial<LearningTaskRow> {
+  const row: Partial<LearningTaskRow> = {}
+  if (task.id !== undefined) row.id = task.id
+  if (task.col !== undefined) row.col = task.col as LearningColumn
+  if (task.title !== undefined) row.title = task.title
+  if (task.description !== undefined) row.description = task.description
+  if (task.url !== undefined) row.url = task.url
+  if (task.type !== undefined) row.type = task.type as LearningResourceType
+  if (task.assignee !== undefined) row.assignee = task.assignee
+  if (task.due !== undefined) row.due = task.due
+  if (task.duration !== undefined) row.duration = task.duration
+  if (task.tags !== undefined) row.tags = task.tags
+  if (task.progress !== undefined) row.progress = task.progress as Json
+  return row
+}
+
 export function clientToClientRow(client: Partial<Client>): Partial<ClientRow> {
   const row: Partial<ClientRow> = {}
 
