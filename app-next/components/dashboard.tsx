@@ -307,7 +307,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
               {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
             </div>
             <h2 className="text-[22px] md:text-[32px] font-extrabold tracking-tight leading-tight mb-2">
-              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'Raúl'}.
+              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {currentUser?.name?.split(' ')[0] || 'bienvenido'}.
             </h2>
             <p className="text-white/70 text-[15px] leading-relaxed max-w-[460px]">
               Tienes <span className="text-white font-semibold">{inProgress} tareas activas</span> y{' '}
@@ -332,22 +332,21 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Proyectos activos" value={activeProjects} delta="+2" trend="up" sub={`${doneProjects} terminados este trimestre`} />
         <StatCard label="Tareas en curso"   value={inProgress}     delta="+4" trend="up" sub={`${review} esperan revisión`} />
-        {canViewRevenue ? (
-          <StatCard label="Clientes activos" value={activeClients} delta="+1" trend="up" sub={`${clients.length} en cartera total`} />
+        {role === null ? (
+          <>
+            <StatCard label="Clientes activos" value="..." sub="cargando..." />
+            <StatCard label="MRR estimado" value="..." sub="cargando..." accent="#D72228" />
+          </>
+        ) : canViewRevenue ? (
+          <>
+            <StatCard label="Clientes activos" value={activeClients} delta="+1" trend="up" sub={`${clients.length} en cartera total`} />
+            <StatCard label="MRR estimado" value={formatMoney(totalMRR).replace('MX$','$')} delta="+8.2%" trend="up" sub="vs. mes anterior" accent="#D72228" />
+          </>
         ) : (
-          <RestrictedStatCard label="Clientes activos" />
-        )}
-        {canViewRevenue ? (
-          <StatCard
-            label="MRR estimado"
-            value={formatMoney(totalMRR).replace('MX$','$')}
-            delta="+8.2%"
-            trend="up"
-            sub="vs. mes anterior"
-            accent="#D72228"
-          />
-        ) : (
-          <RestrictedStatCard label="MRR estimado" />
+          <>
+            <RestrictedStatCard label="Clientes activos" />
+            <RestrictedStatCard label="MRR estimado" />
+          </>
         )}
       </div>
 

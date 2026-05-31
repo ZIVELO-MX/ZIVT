@@ -345,7 +345,7 @@ function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete
       }>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <span className="size-2 rounded-full" style={{background: project?.accent}}/>
+          <span className="size-2 rounded-full" style={{background: project?.accent || '#1D1D1B'}}/>
           <span className="text-[12px] font-semibold text-muted">{project?.name}</span>
           <Tag tag={task.tag} />
         </div>
@@ -521,7 +521,7 @@ function NewTaskModal({ open, defaultCol, projects, profiles = [], onClose, onCr
       id: 't' + Date.now(),
       col: form.col, project: form.project, title: form.title.trim(),
       tag: form.tag, priority: form.priority, due: form.due || null,
-      assignee: form.assignee.length > 0 ? form.assignee : ['u1'],
+      assignee: [],
       subtasks: [], comments: 0, progress: {},
     });
     onClose();
@@ -601,7 +601,7 @@ function kanbanReducer(state: any, action: any) {
     case 'SET_FILTERS': return { ...state, filters: action.value };
     case 'SET_DRAFT': return { ...state, draft: action.value };
     case 'ADD_COMMENT':
-      const comment = { id: 'c' + Date.now(), text: action.text, userId: 'u1', timestamp: new Date().toISOString() };
+      const comment = { id: 'c' + Date.now(), text: action.text, userId: action.userId, timestamp: new Date().toISOString() };
       return { ...state, taskComments: { ...state.taskComments, [action.taskId]: [...(state.taskComments[action.taskId] || []), comment] } };
     case 'RENAME_COLUMN': return { ...state, columnTitles: { ...state.columnTitles, [action.id]: action.title } };
     case 'SET_CONFIRM_CLEAR': return { ...state, confirmClear: action.value };
@@ -717,7 +717,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
   }
 
   function onAddComment(taskId: string, text: string) {
-    dispatch({ type: 'ADD_COMMENT', taskId, text });
+    dispatch({ type: 'ADD_COMMENT', taskId, text, userId: currentUser?.id ?? '' });
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: (t.comments || 0) + 1 } : t));
   }
   function renameColumn(id: string, title: string) {

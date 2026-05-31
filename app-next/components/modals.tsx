@@ -218,15 +218,17 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
   }, [open, onClose, anchorRef])
 
   if (!open) return null
+  if (!user) return null
   return (
     <div ref={popRef} className="absolute right-8 top-[68px] z-40 w-[300px] bg-white rounded-lg border border-line2 shadow-pop pop-in overflow-hidden">
       <div className="p-4 border-b border-line2 flex items-center gap-3">
         <Avatar user={user} size={44} />
         <div className="min-w-0">
           <div className="font-bold text-[14px] truncate">{user.name}</div>
-          <div className="text-[12px] text-muted truncate">{user.email || 'raul@zivelo.dev'}</div>
+          <div className="text-[12px] text-muted truncate">{user.email}</div>
         </div>
       </div>
+      
       <div className="p-2">
         {[
           { ic: <Ic.Users width="15" height="15" />, l: 'Mi perfil', k: '⌘P', onClick: () => { onClose(); onNavigate?.('profile'); } },
@@ -402,7 +404,7 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
     client: presetClient?.id || '',
     status: 'todo',
     start: new Date().toISOString().slice(0, 10), due: '',
-    budget: 0, team: ['u1'], accent: '#D72228',
+    budget: 0, team: [], accent: '#D72228',
   })
   const [useTemplate, setUseTemplate] = useState(true)
 

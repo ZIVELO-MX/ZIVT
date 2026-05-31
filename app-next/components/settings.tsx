@@ -46,6 +46,18 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
 
 function AccountSection({ toast }: { toast: (msg: string) => void }) {
   const user = useCurrentProfile()
+
+  if (!user) {
+    return (
+      <div>
+        <SectionHeading>Cuenta</SectionHeading>
+        <div className="bg-white border border-line2 rounded-lg overflow-hidden p-8 text-center text-muted">
+          Cargando información de la cuenta...
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <SectionHeading>Cuenta</SectionHeading>
@@ -55,7 +67,7 @@ function AccountSection({ toast }: { toast: (msg: string) => void }) {
           <div>
             <div className="font-bold text-[16px]">{user.name}</div>
             <div className="text-[13px] text-muted">{user.email}</div>
-            <div className="text-[12px] text-muted mt-0.5">{user.role} · Admin</div>
+            <div className="text-[12px] text-muted mt-0.5">{user.role} · {user.permission}</div>
           </div>
         </div>
         <SettingRow label="Nombre completo" description="Visible para todos los miembros del workspace">
