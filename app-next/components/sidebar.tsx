@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Ic } from '@/components/icons'
 import { Avatar, IconButton } from '@/components/ui'
@@ -47,7 +48,10 @@ export function NavItem({ icon, label, active, badge, onClick, collapsed }: any)
   )
 }
 
-export function Sidebar({ view, setView, counts, collapsed, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [] }: any) {
+export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [] }: any) {
+  const [mobile, setMobile] = useState(true)
+  useEffect(() => { setMobile(window.innerWidth < 768) }, [])
+  const collapsed = mobile ? false : collapsedProp
   const role = useRole()
   const hideClients = role === 'editor' || role === 'viewer'
   const items = [
