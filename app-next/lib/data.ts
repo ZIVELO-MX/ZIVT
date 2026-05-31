@@ -42,9 +42,10 @@ export const TEAM: User[] = [
 ];
 
 export const PERMISSIONS = {
-  admin:  { label:"Admin",   desc:"Control total del workspace, billing y miembros", cls:"bg-tint text-zred" },
-  editor: { label:"Editor",  desc:"Crear y editar proyectos, tareas y clientes",     cls:"bg-[#EEF2FF] text-[#3A47B5]" },
-  viewer: { label:"Lectura", desc:"Solo puede ver el contenido del workspace",       cls:"bg-soft text-carbon" },
+  founder: { label:"Founder",  desc:"Propietario del workspace con control absoluto",   cls:"bg-tint text-zred" },
+  admin:   { label:"Admin",    desc:"Control total del workspace, billing y miembros",  cls:"bg-tint text-zred" },
+  editor:  { label:"Editor",   desc:"Crear y editar proyectos, tareas y clientes",      cls:"bg-[#EEF2FF] text-[#3A47B5]" },
+  viewer:  { label:"Lectura",  desc:"Solo puede ver el contenido del workspace",        cls:"bg-soft text-carbon" },
 } as const;
 
 export const USER_STATUS = {

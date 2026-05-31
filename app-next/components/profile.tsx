@@ -4,8 +4,8 @@ import { useMemo } from 'react'
 import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { Ic } from '@/components/icons'
 import { Avatar, Card, Badge } from '@/components/ui'
-import { formatDate } from '@/lib/data'
-import type { Task, Project } from '@/lib/data'
+import { formatDate } from '@/lib/constants'
+import type { Task, Project } from '@/lib/supabase/types'
 
 // ─── Level system ─────────────────────────────────────────────────────────────
 

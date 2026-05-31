@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, AvatarStack, Tag, ProgressBar, Avatar } from './ui'
-import { ACTIVITY_INIT, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { useRole } from '@/lib/supabase/useRole'
 import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import type { Client, Profile, ProfilePermission, Project, Task } from '@/lib/supabase/types'
@@ -147,9 +147,35 @@ function timeAgo(ts: string): string {
   return `hace ${Math.floor(d / 7)}sem`;
 }
 
-function ActivityFeed({ profiles = [] }: { profiles?: Profile[] }) {
+function ActivityFeed({ tasks, projects, profiles }: { tasks: Task[]; projects: Project[]; profiles?: Profile[] }) {
   const [limit, setLimit] = useState(7);
-  const events = ACTIVITY_INIT.slice(0, limit);
+  const events = useMemo(() => {
+    const result: { id: string; type: string; userId: string; action: string; target: string; ts: string }[] = [];
+
+    tasks.filter(t => t.col === 'done' && t.updatedAt).forEach(t => {
+      t.assignee.forEach((uid, i) => {
+        if (i < 2) result.push({ id: `td-${t.id}-${uid}`, type: 'task_done', userId: uid, action: 'completó la tarea', target: t.title, ts: t.updatedAt! })
+      })
+    });
+
+    tasks.filter(t => t.col === 'progress' && t.updatedAt).forEach(t => {
+      t.assignee.forEach((uid, i) => {
+        if (i < 1) result.push({ id: `tp-${t.id}-${uid}`, type: 'status_changed', userId: uid, action: 'empezó a trabajar en', target: t.title, ts: t.updatedAt! })
+      })
+    });
+
+    tasks.filter(t => t.col === 'review' && t.updatedAt).forEach(t => {
+      t.assignee.forEach((uid, i) => {
+        if (i < 1) result.push({ id: `tr-${t.id}-${uid}`, type: 'status_changed', userId: uid, action: 'marcó para revisión', target: t.title, ts: t.updatedAt! })
+      })
+    });
+
+    projects.filter(p => p.status === 'done' && p.due).forEach(p => {
+      result.push({ id: `pd-${p.id}`, type: 'project_created', userId: p.team[0], action: 'completó el proyecto', target: p.name, ts: p.due! })
+    });
+
+    return result.sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, limit);
+  }, [tasks, projects, limit]);
 
   return (
     <Card className="p-6">
@@ -158,9 +184,9 @@ function ActivityFeed({ profiles = [] }: { profiles?: Profile[] }) {
           <h3 className="font-bold text-[16px] mb-1">Feed de actividad</h3>
           <p className="text-[12.5px] text-muted">Últimas acciones del equipo</p>
         </div>
-        {limit < ACTIVITY_INIT.length && (
+        {limit < events.length && (
           <button type="button"
-            onClick={() => setLimit(l => Math.min(l + 7, ACTIVITY_INIT.length))}
+            onClick={() => setLimit(l => l + 7)}
             className="text-[12.5px] font-semibold text-zred hover:underline"
           >
             Ver más →
@@ -443,7 +469,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
         </Card>
       </div>
 
-      <ActivityFeed profiles={profiles} />
+      <ActivityFeed tasks={tasks} projects={projects} profiles={profiles} />
     </div>
   );
 }

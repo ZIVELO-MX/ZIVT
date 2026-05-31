@@ -4,11 +4,12 @@ import { useState, useEffect, useRef, useReducer, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, Badge, Button, Card, Input, Select, Drawer, Modal, Tag } from './ui'
 import { ConfirmDialog } from './modals'
-import { TASKS_INIT, PROJECTS_INIT, WORK_TEAMS_INIT, USER_STATUS, PERMISSIONS, formatDate } from '@/lib/data'
-import type { WorkTeam } from '@/lib/data'
+import { USER_STATUS, PERMISSIONS, formatDate } from '@/lib/constants'
 import type { Profile } from '@/lib/supabase/types'
 import { updateProfile } from '@/lib/supabase/queries'
 import { AvatarStack } from './ui'
+
+type WorkTeam = { id: string; name: string; color: string; members: string[] }
 
 const ROLES_OPTIONS = ['Founder','Frontend','Backend','Diseño','QA','Marketing','Developer','Project Manager','Otro']
 const USER_COLORS = ['#D72228','#1D1D1B','#6B6B6B','#B91C22','#2F4858','#7A5A12','#3A47B5','#1E6B3C']
@@ -71,8 +72,8 @@ function UserRow({ user, onOpen, onEdit, onDelete, onSuspend }: any) {
 function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects: contextProjects }: any) {
   const userAge = !user ? '...' : `${Math.max(1, Math.floor((Date.now() - new Date(user.joined).getTime()) / (30*86400000)))}m`
   if (!user) return null
-  const tasksAssigned = (contextTasks || TASKS_INIT).filter((t: any) => t.assignee.includes(user.id) && t.col !== 'done')
-  const projectsCount = (contextProjects || PROJECTS_INIT).filter((p: any) => p.team.includes(user.id)).length
+  const tasksAssigned = (contextTasks || []).filter((t: any) => t.assignee.includes(user.id) && t.col !== 'done')
+  const projectsCount = (contextProjects || []).filter((p: any) => p.team.includes(user.id)).length
   const status = USER_STATUS[user.status]
   const perm = PERMISSIONS[user.permission]
 
@@ -160,7 +161,7 @@ function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects
           ) : (
             <div className="space-y-1.5">
               {tasksAssigned.slice(0, 5).map(t => {
-                const p = PROJECTS_INIT.find(pr => pr.id === t.project)
+                const p = (contextProjects || []).find(pr => pr.id === t.project)
                 return (
                   <div key={t.id} className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-soft transition-colors">
                     <span className="w-1.5 h-8 rounded-full shrink-0" style={{background:p?.accent}}/>
@@ -230,13 +231,13 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Nombre completo" placeholder="Ej. Ana Ruiz" value={form.name} onChange={(e)=>handleSet('name', e.target.value)} autoFocus/>
           <Select label="Rol" value={form.role} onChange={(e)=>handleSet('role', e.target.value)}
             options={ROLES_OPTIONS.map(r => ({ value:r, label:r }))}/>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input label="Email corporativo" type="email" placeholder="nombre@zivelo.dev" value={form.email} onChange={(e)=>handleSet('email', e.target.value)}/>
           <Input label="Teléfono" placeholder="+52 ..." value={form.phone} onChange={(e)=>handleSet('phone', e.target.value)}/>
         </div>
@@ -388,7 +389,7 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
 export default function Users({ tasks, projects, teams: teamsProp, setTeams: setTeamsProp, users, setUsers }: any) {
   const usersRef = useRef(users);
   useEffect(() => { usersRef.current = users; }, [users]);
-  const [teams, setTeams] = useState<WorkTeam[]>(teamsProp ?? WORK_TEAMS_INIT)
+  const [teams, setTeams] = useState<WorkTeam[]>(teamsProp || [])
   const [page, setPage] = useReducer(
     (prev: any, next: any) => ({ ...prev, ...next }),
     { tab: 'members' as 'members' | 'teams', toast: '', search: '', filter: 'all', openDetail: null, formOpen: false, formMode: 'new', editing: null, confirmDel: null, teamFormOpen: false, editingTeam: null as WorkTeam | null, confirmDelTeam: null as WorkTeam | null }
@@ -627,8 +628,8 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
+        <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1 overflow-x-auto no-scrollbar shrink-0">
           {[
             {id:'all',       label:'Todos',       n: counts.all},
             {id:'active',    label:'Activos',     n: counts.active},
@@ -636,22 +637,22 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
             {id:'suspended', label:'Suspendidos', n: counts.suspended},
           ].map(t => (
             <button key={t.id} type="button" onClick={()=>setPage({ filter: t.id })}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+              className={`shrink-0 px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
               {t.label}
               <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.filter===t.id?'bg-white/15':'bg-soft'}`}>{t.n}</span>
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line">
-          <Ic.Search width="14" height="14" className="text-muted"/>
-          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar por nombre, email o rol..." aria-label="Buscar miembros" className="bg-transparent outline-none text-[13px] w-72"/>
+        <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line flex-1 min-w-0">
+          <Ic.Search width="14" height="14" className="text-muted shrink-0"/>
+          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar por nombre, email o rol..." aria-label="Buscar miembros" className="bg-transparent outline-none text-[13px] min-w-0 flex-1"/>
         </div>
-        <div className="flex-1"/>
-        <Button variant="primary" onClick={openNew}><Ic.Plus width="15" height="15"/> Invitar miembro</Button>
+        <Button variant="primary" onClick={openNew} className="shrink-0"><Ic.Plus width="15" height="15"/> Invitar miembro</Button>
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-[13px]">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[700px] text-[13px]">
           <thead className="bg-soft border-b border-line2">
             <tr className="text-left">
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Miembro</th>
@@ -677,6 +678,7 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
             <div className="text-[12.5px]">Ajusta el filtro o invita a un nuevo miembro.</div>
           </div>
         )}
+        </div>
       </Card>
 
       <UserDetailDrawer user={page.openDetail} onClose={()=>setPage({ openDetail: null })} onEdit={openEdit} tasks={tasks} projects={projects}/>

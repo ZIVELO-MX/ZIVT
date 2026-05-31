@@ -1,11 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { LEARNING_INIT, WORK_TEAMS_INIT } from '@/lib/data';
-import { getClients, getNotifications, getProfiles, getProjects, getTasks, markNotificationRead, markAllNotificationsRead } from '@/lib/supabase/queries';
+import { getClients, getLearningTasks, getNotifications, getProfiles, getProjects, getTasks, markNotificationRead, markAllNotificationsRead } from '@/lib/supabase/queries';
 import { createClient } from '@/lib/supabase/client';
-import type { WorkTeam } from '@/lib/data';
-import type { LearningTask } from '@/lib/data';
 import type { Client, Notification, Profile, Task } from '@/lib/supabase/types';
 import { Sidebar, Topbar } from '@/components/sidebar';
 import { UserMenu, NotificationsDrawer, CommandPalette, InviteModal, KeyboardShortcutsModal, PreferencesDrawer } from '@/components/modals';
@@ -26,8 +23,8 @@ export default function HomePage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [teams, setTeams] = useState<WorkTeam[]>(WORK_TEAMS_INIT);
-  const [learning, setLearning] = useState<LearningTask[]>(LEARNING_INIT);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [learning, setLearning] = useState<any[]>([]);
 
   // Fetch + realtime subscription for all DB tables
   useEffect(() => {
@@ -36,6 +33,7 @@ export default function HomePage() {
     getClients().then(setClients);
     getProfiles().then(setProfiles);
     getNotifications().then(setNotifications);
+    getLearningTasks().then(setLearning);
 
     const supabase = createClient();
     const channel = supabase
@@ -54,6 +52,9 @@ export default function HomePage() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
         getNotifications().then(setNotifications);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'learning_tasks' }, () => {
+        getLearningTasks().then(setLearning);
       })
       .subscribe();
 

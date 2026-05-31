@@ -519,6 +519,23 @@ export function clientRowToClient(row: ClientRow): Client {
   }
 }
 
+export function learningTaskRowToLearningTask(row: LearningTaskRow): LearningTask {
+  return {
+    id: row.id,
+    col: row.col ?? 'todo',
+    title: row.title,
+    description: row.description ?? '',
+    url: row.url ?? '',
+    type: row.type ?? 'article',
+    assignee: row.assignee ?? [],
+    due: row.due,
+    duration: row.duration ?? '',
+    tags: row.tags ?? [],
+    progress: (row.progress as Record<string, MemberProgress> | null) ?? {},
+    createdAt: row.created_at,
+  }
+}
+
 export function clientToClientRow(client: Partial<Client>): Partial<ClientRow> {
   const row: Partial<ClientRow> = {}
 
