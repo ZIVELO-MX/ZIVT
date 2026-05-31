@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useReducer, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, Badge, Button, Card, Input, Select, Drawer, Modal, Tag } from './ui'
 import { ConfirmDialog } from './modals'
@@ -34,7 +34,7 @@ function UserRow({ user, onOpen, onEdit, onDelete, onSuspend }: any) {
           <div className="relative">
             <Avatar user={user} size={38}/>
             {user.status === 'active' && user.lastActive === 'En línea' && (
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#3CB371] ring-2 ring-white dark:ring-[#1A1A18]"/>
+              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-[#3CB371] ring-2 ring-white dark:ring-[#1A1A18]"/>
             )}
           </div>
           <div>
@@ -50,16 +50,16 @@ function UserRow({ user, onOpen, onEdit, onDelete, onSuspend }: any) {
       <td className="px-5 py-3.5 text-[12.5px] text-muted nums">{formatDate(user.joined)}</td>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-1 justify-end" onClick={(e)=>e.stopPropagation()}>
-          <button onClick={() => onEdit(user)} title="Editar"
-            className="w-8 h-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
+          <button type="button" onClick={() => onEdit(user)} title="Editar"
+            className="size-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
             <Ic.Edit width="15" height="15"/>
           </button>
-          <button onClick={() => onSuspend(user)} title={user.status === 'suspended' ? 'Reactivar' : 'Suspender'}
-            className="w-8 h-8 rounded-full hover:bg-soft flex items-center justify-center text-muted transition-colors">
+          <button type="button" onClick={() => onSuspend(user)} title={user.status === 'suspended' ? 'Reactivar' : 'Suspender'}
+            className="size-8 rounded-full hover:bg-soft flex items-center justify-center text-muted transition-colors">
             <Ic.Clock width="15" height="15"/>
           </button>
-          <button onClick={() => onDelete(user)} title="Eliminar"
-            className="w-8 h-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
+          <button type="button" onClick={() => onDelete(user)} title="Eliminar"
+            className="size-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
             <Ic.Trash width="15" height="15"/>
           </button>
         </div>
@@ -69,6 +69,7 @@ function UserRow({ user, onOpen, onEdit, onDelete, onSuspend }: any) {
 }
 
 function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects: contextProjects }: any) {
+  const userAge = !user ? '...' : `${Math.max(1, Math.floor((Date.now() - new Date(user.joined).getTime()) / (30*86400000)))}m`
   if (!user) return null
   const tasksAssigned = (contextTasks || TASKS_INIT).filter((t: any) => t.assignee.includes(user.id) && t.col !== 'done')
   const projectsCount = (contextProjects || PROJECTS_INIT).filter((p: any) => p.team.includes(user.id)).length
@@ -85,7 +86,7 @@ function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects
           </Button>
         </div>
       }>
-      <div className="px-6 py-6 space-y-6">
+      <div className="p-6 space-y-6">
         <div className="flex items-start gap-4">
           <UserAvatarLarge user={user}/>
           <div className="flex-1">
@@ -110,7 +111,7 @@ function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects
           <div className="p-3 rounded-md bg-soft">
             <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted mb-1">Antigüedad</div>
             <div className="text-[20px] font-extrabold nums">
-              {Math.max(1, Math.floor((Date.now() - new Date(user.joined).getTime()) / (30*86400000)))}m
+              {userAge}
             </div>
           </div>
         </div>
@@ -180,22 +181,19 @@ function UserDetailDrawer({ user, onClose, onEdit, tasks: contextTasks, projects
 }
 
 function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
-  const empty = {
-    id:'', name:'', initials:'XX', color: USER_COLORS[0],
-    email:'', phone:'', role:'Developer',
-    status: 'invited', permission: 'editor',
-    joined: new Date().toISOString().slice(0,10), lastActive: '—',
+  const [form, setForm] = useState(USER_FORM_EMPTY)
+  const formKey = open ? (initial?.id || '__new__') : '__closed__'
+  const prevFormKey = useRef(formKey)
+  if (formKey !== prevFormKey.current) {
+    prevFormKey.current = formKey
+    setForm(initial ? { ...initial } : { ...USER_FORM_EMPTY })
   }
-  const [form, setForm] = useState(empty)
-  useEffect(() => {
-    if (open) setForm(initial ? { ...initial } : empty)
-  }, [open, initial])
 
-  function set(k, v) {
+  function handleSet(k: string, v: string) {
     setForm(f => {
       const next = { ...f, [k]: v }
       if (k === 'name') {
-        next.initials = v.split(' ').map(w => w[0]).filter(Boolean).slice(0,2).join('').toUpperCase() || 'XX'
+        next.initials = v.split(' ').flatMap(w => w[0] || []).slice(0,2).join('').toUpperCase() || 'XX'
       }
       return next
     })
@@ -224,22 +222,23 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
           </div>
           <div className="flex gap-1.5">
             {USER_COLORS.map(c => (
-              <button key={c} type="button" onClick={() => set('color', c)}
-                className={`w-6 h-6 rounded-full transition-transform ${form.color === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-110'}`}
+              <button key={c} type="button" onClick={() => handleSet('color', c)}
+                aria-label={`Color ${c}`}
+                className={`size-6 rounded-full transition-transform ${form.color === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-110'}`}
                 style={{ background: c }}/>
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Nombre completo" placeholder="Ej. Ana Ruiz" value={form.name} onChange={(e)=>set('name', e.target.value)} autoFocus/>
-          <Select label="Rol" value={form.role} onChange={(e)=>set('role', e.target.value)}
+          <Input label="Nombre completo" placeholder="Ej. Ana Ruiz" value={form.name} onChange={(e)=>handleSet('name', e.target.value)} autoFocus/>
+          <Select label="Rol" value={form.role} onChange={(e)=>handleSet('role', e.target.value)}
             options={ROLES_OPTIONS.map(r => ({ value:r, label:r }))}/>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Email corporativo" type="email" placeholder="nombre@zivelo.dev" value={form.email} onChange={(e)=>set('email', e.target.value)}/>
-          <Input label="Teléfono" placeholder="+52 ..." value={form.phone} onChange={(e)=>set('phone', e.target.value)}/>
+          <Input label="Email corporativo" type="email" placeholder="nombre@zivelo.dev" value={form.email} onChange={(e)=>handleSet('email', e.target.value)}/>
+          <Input label="Teléfono" placeholder="+52 ..." value={form.phone} onChange={(e)=>handleSet('phone', e.target.value)}/>
         </div>
 
         <div>
@@ -249,11 +248,11 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
               const p = PERMISSIONS[k]
               const on = form.permission === k
               return (
-                <button key={k} type="button" onClick={() => set('permission', k)}
+                <button key={k} type="button" onClick={() => handleSet('permission', k)}
                   className={`p-3 rounded-md border text-left transition-all ${on ? 'border-zred bg-tint' : 'border-line hover:border-zred/40'}`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-[13px]">{p.label}</span>
-                    {on && <span className="w-5 h-5 rounded-full bg-zred text-white inline-flex items-center justify-center"><Ic.Check width="11" height="11"/></span>}
+                    {on && <span className="size-5 rounded-full bg-zred text-white inline-flex items-center justify-center"><Ic.Check width="11" height="11"/></span>}
                   </div>
                   <div className="text-[11.5px] text-muted leading-snug">{p.desc}</div>
                 </button>
@@ -263,7 +262,7 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
         </div>
 
         {mode === 'edit' && (
-          <Select label="Estado" value={form.status} onChange={(e)=>set('status', e.target.value)}
+          <Select label="Estado" value={form.status} onChange={(e)=>handleSet('status', e.target.value)}
             options={[
               {value:'active', label:'Activo'},
               {value:'invited', label:'Invitación enviada'},
@@ -273,7 +272,7 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
 
         {mode === 'new' && (
           <div className="rounded-md bg-tint border border-zred/15 p-3.5 flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-zred text-white flex items-center justify-center shrink-0">
+            <div className="size-8 rounded-full bg-zred text-white flex items-center justify-center shrink-0">
               <Ic.Mail width="15" height="15"/>
             </div>
             <div className="text-[12.5px] text-carbon leading-snug">
@@ -289,13 +288,23 @@ function UserFormModal({ open, mode, initial, onClose, onSave }: any) {
 
 const TEAM_COLORS = ['#D72228','#1D1D1B','#3A47B5','#1E6B3C','#7A5A12','#6B6B6B','#B91C22','#2F4858']
 
-function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
-  const empty = { id: '', name: '', color: '#3A47B5', members: [] as string[] }
-  const [form, setForm] = useState<{ id: string; name: string; color: string; members: string[] }>(empty)
+const TEAM_FORM_EMPTY = { id: '', name: '', color: '#3A47B5', members: [] as string[] }
 
-  useEffect(() => {
-    if (open) setForm(initial ? { ...initial } : empty)
-  }, [open, initial])
+const USER_FORM_EMPTY = {
+  id:'', name:'', initials:'XX', color: USER_COLORS[0],
+  email:'', phone:'', role:'Developer',
+  status: 'invited', permission: 'editor',
+  joined: new Date().toISOString().slice(0,10), lastActive: '—',
+}
+
+function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
+  const [form, setForm] = useState<{ id: string; name: string; color: string; members: string[] }>(TEAM_FORM_EMPTY)
+  const prevFormKey = useRef<string | null>(null)
+  const formKey = open ? (initial?.id || '__new__') : '__closed__'
+  if (formKey !== prevFormKey.current) {
+    prevFormKey.current = formKey
+    setForm(initial ? { ...initial } : TEAM_FORM_EMPTY)
+  }
 
   function toggleMember(id: string) {
     setForm(f => ({
@@ -323,7 +332,7 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
       <div className="space-y-5">
 
         <div className="flex items-center gap-4 p-4 rounded-md bg-soft">
-          <div className="w-14 h-14 rounded-md flex items-center justify-center shrink-0 transition-colors"
+          <div className="size-14 rounded-md flex items-center justify-center shrink-0 transition-colors"
             style={{ background: form.color + '20' }}>
             <span className="text-[22px] font-extrabold tracking-tight" style={{ color: form.color }}>
               {form.name ? form.name.slice(0, 2).toUpperCase() : '??'}
@@ -342,8 +351,8 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
           <div className="text-[12px] font-semibold uppercase tracking-wider text-carbon mb-2">Color de grupo</div>
           <div className="flex gap-2">
             {TEAM_COLORS.map(c => (
-              <button key={c} type="button" onClick={() => setForm(f => ({ ...f, color: c }))}
-                className={`w-8 h-8 rounded-md transition-transform ${form.color === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-105'}`}
+              <button key={c} type="button" aria-label={`Color ${c}`} onClick={() => setForm(f => ({ ...f, color: c }))}
+                className={`size-8 rounded-md transition-transform ${form.color === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-105'}`}
                 style={{ background: c }} />
             ))}
           </div>
@@ -354,9 +363,10 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
             Miembros <span className="font-normal text-muted normal-case tracking-normal">(selecciona al menos uno)</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {users.filter((u: any) => u.status !== 'suspended').map((u: any) => {
+            {users.reduce((acc: any[], u: any) => {
+              if (u.status === 'suspended') return acc
               const on = form.members.includes(u.id)
-              return (
+              acc.push(
                 <button key={u.id} type="button" onClick={() => toggleMember(u.id)}
                   className={`flex items-center gap-2 pl-1 pr-3 h-9 rounded-full border transition-all ${on ? 'bg-carbon text-white border-carbon' : 'bg-white text-carbon border-line hover:border-zred/40'}`}>
                   <Avatar user={u} size={26} />
@@ -365,7 +375,8 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
                   {on && <Ic.Check width="13" height="13" />}
                 </button>
               )
-            })}
+              return acc
+            }, [])}
           </div>
         </div>
 
@@ -377,20 +388,12 @@ function TeamFormModal({ open, initial, onClose, onSave, users }: any) {
 export default function Users({ tasks, projects, teams: teamsProp, setTeams: setTeamsProp, users, setUsers }: any) {
   const usersRef = useRef(users);
   useEffect(() => { usersRef.current = users; }, [users]);
-  const [tab, setTab] = useState<'members' | 'teams'>('members')
-  const [toast, setToast] = useState('');
-  const toastRef = useRef<number | undefined>(undefined);
   const [teams, setTeams] = useState<WorkTeam[]>(teamsProp ?? WORK_TEAMS_INIT)
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
-  const [openDetail, setOpenDetail] = useState(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState('new')
-  const [editing, setEditing] = useState(null)
-  const [confirmDel, setConfirmDel] = useState(null)
-  const [teamFormOpen, setTeamFormOpen] = useState(false)
-  const [editingTeam, setEditingTeam] = useState<WorkTeam | null>(null)
-  const [confirmDelTeam, setConfirmDelTeam] = useState<WorkTeam | null>(null)
+  const [page, setPage] = useReducer(
+    (prev: any, next: any) => ({ ...prev, ...next }),
+    { tab: 'members' as 'members' | 'teams', toast: '', search: '', filter: 'all', openDetail: null, formOpen: false, formMode: 'new', editing: null, confirmDel: null, teamFormOpen: false, editingTeam: null as WorkTeam | null, confirmDelTeam: null as WorkTeam | null }
+  );
+  const toastRef = useRef<number | undefined>(undefined);
 
   function saveTeam(wt: WorkTeam) {
     const updated = teams.find(t => t.id === wt.id)
@@ -404,7 +407,7 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
     const updated = teams.filter(t => t.id !== wt.id)
     setTeams(updated)
     setTeamsProp?.(updated)
-    setConfirmDelTeam(null)
+    setPage({ confirmDelTeam: null })
   }
 
   const counts = {
@@ -416,18 +419,18 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
   }
 
   const filtered = users.filter(u => {
-    if (filter !== 'all' && u.status !== filter) return false
-    const q = search.toLowerCase()
+    if (page.filter !== 'all' && u.status !== page.filter) return false
+    const q = page.search.toLowerCase()
     return !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.role.toLowerCase().includes(q)
   })
 
   function showToast(message: string) {
-    setToast(message);
+    setPage({ toast: message });
     if (toastRef.current) window.clearTimeout(toastRef.current);
-    toastRef.current = window.setTimeout(() => setToast(''), 2200);
+    toastRef.current = window.setTimeout(() => setPage({ toast: '' }), 2200);
   }
-  function openNew()       { setEditing(null); setFormMode('new'); setFormOpen(true) }
-  function openEdit(u)     { setEditing(u); setFormMode('edit'); setFormOpen(true); setOpenDetail(null) }
+  function openNew()       { setPage({ editing: null, formMode: 'new', formOpen: true }) }
+  function openEdit(u)     { setPage({ editing: u, formMode: 'edit', formOpen: true, openDetail: null }) }
   function handleSave(u)   {
     const snapshot = usersRef.current;
     setUsers(prev => {
@@ -449,10 +452,10 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
       })
     }
   }
-  function handleDelete(u) { setConfirmDel(u) }
+  function handleDelete(u) { setPage({ confirmDel: u }) }
   function confirmDelete() {
-    const target = confirmDel;
-    setConfirmDel(null);
+    const target = page.confirmDel;
+    setPage({ confirmDel: null });
     if (!target) return;
     const snapshot = usersRef.current;
     setUsers(prev => prev.filter(x => x.id !== target.id));
@@ -470,60 +473,60 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
 
   return (
     <div className="px-8 py-6 space-y-5">
-      {toast && (
+      {page.toast && (
         <div className="fixed right-6 bottom-6 z-[80] rounded-md bg-carbon text-white shadow-pop px-4 py-3 text-[13px] font-semibold pop-in">
-          {toast}
+          {page.toast}
         </div>
       )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 bg-white border border-line rounded-full p-1 w-fit">
-        <button onClick={() => setTab('members')}
-          className={`px-4 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-all ${tab === 'members' ? 'bg-carbon text-white' : 'text-muted hover:text-carbon'}`}>
+        <button type="button" onClick={() => setPage({ tab: 'members' })}
+          className={`px-4 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-all ${page.tab === 'members' ? 'bg-carbon text-white' : 'text-muted hover:text-carbon'}`}>
           Miembros
-          <span className={`px-1.5 rounded-full text-[10.5px] nums ${tab === 'members' ? 'bg-white/15' : 'bg-soft'}`}>{users.length}</span>
+          <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.tab === 'members' ? 'bg-white/15' : 'bg-soft'}`}>{users.length}</span>
         </button>
-        <button onClick={() => setTab('teams')}
-          className={`px-4 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-all ${tab === 'teams' ? 'bg-carbon text-white' : 'text-muted hover:text-carbon'}`}>
+        <button type="button" onClick={() => setPage({ tab: 'teams' })}
+          className={`px-4 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-all ${page.tab === 'teams' ? 'bg-carbon text-white' : 'text-muted hover:text-carbon'}`}>
           Grupos
-          <span className={`px-1.5 rounded-full text-[10.5px] nums ${tab === 'teams' ? 'bg-white/15' : 'bg-soft'}`}>{teams.length}</span>
+          <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.tab === 'teams' ? 'bg-white/15' : 'bg-soft'}`}>{teams.length}</span>
         </button>
       </div>
 
       {/* ── GRUPOS ── */}
-      {tab === 'teams' && (
+      {page.tab === 'teams' && (
         <div className="space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-[18px] font-bold tracking-tight">Grupos de trabajo</h2>
               <p className="text-[13px] text-muted">Los grupos permiten asignar equipos completos a nuevos proyectos con un solo clic.</p>
             </div>
-            <Button variant="primary" onClick={() => { setEditingTeam(null); setTeamFormOpen(true) }}>
+            <Button variant="primary" onClick={() => { setPage({ editingTeam: null, teamFormOpen: true }) }}>
               <Ic.Plus width="15" height="15" /> Nuevo grupo
             </Button>
           </div>
 
           {teams.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-full bg-soft flex items-center justify-center text-muted mb-4">
+              <div className="size-16 rounded-full bg-soft flex items-center justify-center text-muted mb-4">
                 <Ic.Users width="28" height="28" />
               </div>
               <h3 className="text-[18px] font-bold tracking-tight mb-1">Sin grupos aún</h3>
               <p className="text-[14px] text-muted mb-4">Crea grupos para asignar equipos completos a proyectos de forma rápida.</p>
-              <Button variant="primary" onClick={() => { setEditingTeam(null); setTeamFormOpen(true) }}>
+            <Button variant="primary" onClick={() => { setPage({ editingTeam: null, teamFormOpen: true }) }}>
                 <Ic.Plus width="15" height="15" /> Crear primer grupo
               </Button>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {teams.map(wt => {
-                const members = wt.members.map(id => users.find(u => u.id === id)).filter(Boolean)
+                const members = wt.members.flatMap(id => { const u = users.find(u => u.id === id); return u ? [u] : [] })
                 return (
                   <Card key={wt.id} hover className="p-5 relative overflow-hidden">
                     <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: wt.color }} />
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-md flex items-center justify-center shrink-0"
+                        <div className="size-10 rounded-md flex items-center justify-center shrink-0"
                           style={{ background: wt.color + '18' }}>
                           <span className="text-[13px] font-extrabold" style={{ color: wt.color }}>
                             {wt.name.slice(0, 2).toUpperCase()}
@@ -535,12 +538,12 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => { setEditingTeam(wt); setTeamFormOpen(true) }}
-                          className="w-8 h-8 rounded-full hover:bg-soft flex items-center justify-center text-muted transition-colors">
+                        <button type="button" onClick={() => { setPage({ editingTeam: wt, teamFormOpen: true }) }}
+                          className="size-8 rounded-full hover:bg-soft flex items-center justify-center text-muted transition-colors">
                           <Ic.Edit width="14" height="14" />
                         </button>
-                        <button onClick={() => setConfirmDelTeam(wt)}
-                          className="w-8 h-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
+                        <button type="button" onClick={() => setPage({ confirmDelTeam: wt })}
+                          className="size-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
                           <Ic.Trash width="14" height="14" />
                         </button>
                       </div>
@@ -558,7 +561,7 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
 
                     <div className="flex items-center justify-between border-t border-line2 pt-3">
                       <AvatarStack users={members} size={24} max={5} />
-                      <button onClick={() => { setEditingTeam(wt); setTeamFormOpen(true) }}
+                      <button type="button" onClick={() => { setPage({ editingTeam: wt, teamFormOpen: true }) }}
                         className="text-[12px] font-semibold text-carbon inline-flex items-center gap-1 hover:text-zred transition-colors">
                         Editar grupo <Ic.Arrow width="11" height="11" />
                       </button>
@@ -570,26 +573,26 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
           )}
 
           <TeamFormModal
-            open={teamFormOpen}
-            initial={editingTeam}
+            open={page.teamFormOpen}
+            initial={page.editingTeam}
             users={users}
-            onClose={() => setTeamFormOpen(false)}
+            onClose={() => setPage({ teamFormOpen: false })}
             onSave={saveTeam}
           />
           <ConfirmDialog
-            open={!!confirmDelTeam}
+            open={!!page.confirmDelTeam}
             title="¿Eliminar este grupo?"
-            message={confirmDelTeam ? `Estás a punto de eliminar el grupo "${confirmDelTeam.name}". Los proyectos que ya lo usaron no se verán afectados.` : ''}
+            message={page.confirmDelTeam ? `Estás a punto de eliminar el grupo "${page.confirmDelTeam.name}". Los proyectos que ya lo usaron no se verán afectados.` : ''}
             confirmLabel="Sí, eliminar"
             cancelLabel="Cancelar"
-            onConfirm={() => confirmDelTeam && deleteTeam(confirmDelTeam)}
-            onCancel={() => setConfirmDelTeam(null)}
+            onConfirm={() => page.confirmDelTeam && deleteTeam(page.confirmDelTeam)}
+            onCancel={() => setPage({ confirmDelTeam: null })}
           />
         </div>
       )}
 
       {/* ── MIEMBROS ── */}
-      {tab === 'members' && <>
+      {page.tab === 'members' && <>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-5">
@@ -615,7 +618,7 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
       </div>
 
       <div className="flex items-start gap-3 rounded-md border border-line2 bg-soft/50 px-4 py-3">
-        <div className="w-8 h-8 rounded-full bg-carbon text-white flex items-center justify-center shrink-0">
+        <div className="size-8 rounded-full bg-carbon text-white flex items-center justify-center shrink-0">
           <Ic.Settings width="15" height="15"/>
         </div>
         <div className="flex-1 text-[12.5px] leading-relaxed">
@@ -632,16 +635,16 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
             {id:'invited',   label:'Invitados',   n: counts.invited},
             {id:'suspended', label:'Suspendidos', n: counts.suspended},
           ].map(t => (
-            <button key={t.id} onClick={()=>setFilter(t.id)}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+            <button key={t.id} type="button" onClick={()=>setPage({ filter: t.id })}
+              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
               {t.label}
-              <span className={`px-1.5 rounded-full text-[10.5px] nums ${filter===t.id?'bg-white/15':'bg-soft'}`}>{t.n}</span>
+              <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.filter===t.id?'bg-white/15':'bg-soft'}`}>{t.n}</span>
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line">
           <Ic.Search width="14" height="14" className="text-muted"/>
-          <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Buscar por nombre, email o rol..." className="bg-transparent outline-none text-[13px] w-72"/>
+          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar por nombre, email o rol..." aria-label="Buscar miembros" className="bg-transparent outline-none text-[13px] w-72"/>
         </div>
         <div className="flex-1"/>
         <Button variant="primary" onClick={openNew}><Ic.Plus width="15" height="15"/> Invitar miembro</Button>
@@ -657,13 +660,13 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Estado</th>
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Actividad</th>
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Ingreso</th>
-              <th className="px-5 py-3 text-right"></th>
+              <th className="px-5 py-3 text-right" aria-label="Acciones"></th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(u => (
               <UserRow key={u.id} user={u}
-                onOpen={setOpenDetail} onEdit={openEdit}
+                onOpen={(u) => setPage({ openDetail: u })} onEdit={openEdit}
                 onDelete={handleDelete} onSuspend={toggleSuspend}/>
             ))}
           </tbody>
@@ -676,16 +679,16 @@ export default function Users({ tasks, projects, teams: teamsProp, setTeams: set
         )}
       </Card>
 
-      <UserDetailDrawer user={openDetail} onClose={()=>setOpenDetail(null)} onEdit={openEdit} tasks={tasks} projects={projects}/>
-      <UserFormModal open={formOpen} mode={formMode} initial={editing} onClose={()=>setFormOpen(false)} onSave={handleSave}/>
+      <UserDetailDrawer user={page.openDetail} onClose={()=>setPage({ openDetail: null })} onEdit={openEdit} tasks={tasks} projects={projects}/>
+      <UserFormModal open={page.formOpen} mode={page.formMode} initial={page.editing} onClose={()=>setPage({ formOpen: false })} onSave={handleSave}/>
       <ConfirmDialog
-        open={!!confirmDel}
+        open={!!page.confirmDel}
         title="¿Eliminar este miembro?"
-        message={confirmDel ? `Estás a punto de remover a ${confirmDel.name} del workspace. Perderá acceso inmediatamente y sus tareas asignadas quedarán sin responsable.` : ''}
+        message={page.confirmDel ? `Estás a punto de remover a ${page.confirmDel.name} del workspace. Perderá acceso inmediatamente y sus tareas asignadas quedarán sin responsable.` : ''}
         confirmLabel="Sí, eliminar"
         cancelLabel="Cancelar"
         onConfirm={confirmDelete}
-        onCancel={() => setConfirmDel(null)}
+        onCancel={() => setPage({ confirmDel: null })}
       />
 
       </>}

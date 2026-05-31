@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef, useReducer } from 'react'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag } from './ui'
 import { CustomDatePicker as DatePicker, CustomSelect } from './controls'
-import { TEAM, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASKS_INIT, PROJECTS_INIT, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { ConfirmDialog, FiltersDrawer } from './modals'
 import { createTask, updateTask, deleteTask, moveTask } from '@/lib/supabase/queries'
 import { notifyTaskCompleted, notifyTaskCreated } from '@/lib/supabase/notify'
@@ -54,9 +55,9 @@ function PriorityDot({ priority }: any) {
   );
 }
 
-function TaskCard({ task, projects, onClick, onDragStart, onDragEnd, dragging }: any) {
+function TaskCard({ task, projects, profiles = [], onClick, onDragStart, onDragEnd, dragging }: any) {
   const project = projects.find(p => p.id === task.project);
-  const team = task.assignee.flatMap(id => { const u = TEAM.find(m => m.id === id); return u ? [u] : []; });
+  const team = task.assignee.flatMap(id => { const u = profiles.find(m => m.id === id); return u ? [u] : []; });
   const days = daysUntil(task.due);
   const overdue = task.due && days < 0 && task.col !== 'done';
   const soon = task.due && days >= 0 && days <= 3 && task.col !== 'done';
@@ -118,7 +119,7 @@ function TaskCard({ task, projects, onClick, onDragStart, onDragEnd, dragging }:
   );
 }
 
-function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon }: any) {
+function Column({ col, tasks, projects, profiles = [], onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -213,6 +214,7 @@ function Column({ col, tasks, projects, onDrop, onDragOver, onDragLeave, isOver,
             key={t.id}
             task={t}
             projects={projects}
+            profiles={profiles}
             dragging={draggingId === t.id}
             onClick={onCardClick}
             onDragStart={onCardDragStart}
@@ -263,7 +265,8 @@ function taskDetailReducer(state: any, action: any) {
   }
 }
 
-function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onAddComment }: any) {
+function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete, comments, onAddComment }: any) {
+  const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(taskDetailReducer, {
     edit: { ...(task || {}), description: task?.description || '' },
     saved: false,
@@ -348,7 +351,7 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
           <div>
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Asignados</div>
             <div className="flex flex-wrap gap-1">
-              {TEAM.map(u => {
+              {profiles.map(u => {
                 const on = state.edit.assignee?.includes(u.id);
                 return (
                   <button key={u.id} type="button" onClick={() => dispatch({ type: 'SET_FIELD', key: 'assignee', value: on ? state.edit.assignee.filter((x: string) => x !== u.id) : [...(state.edit.assignee || []), u.id] })}
@@ -367,7 +370,7 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Progreso por persona</div>
             <div className="space-y-2">
               {state.edit.assignee.map((uid: string) => {
-                const u = TEAM.find(m => m.id === uid);
+                const u = profiles.find(m => m.id === uid);
                 if (!u) return null;
                 const status = state.edit.progress?.[uid] || 'todo';
                 return (
@@ -443,7 +446,7 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Comentarios</div>
           <div className="space-y-3 text-[13px] mb-3">
             {comments.map(c => {
-              const user = TEAM.find(u => u.id === c.userId);
+              const user = profiles.find(u => u.id === c.userId);
               return (
                 <div key={c.id} className="flex items-start gap-3">
                   <Avatar user={user} size={26}/>
@@ -462,7 +465,7 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
             )}
           </div>
           <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">
-            <Avatar user={TEAM[0]} size={28}/>
+            <Avatar user={currentUser} size={28}/>
             <input value={state.newComment} onChange={(e) => dispatch({ type: 'SET_NEW_COMMENT', value: e.target.value })}
               placeholder="Escribe un comentario..."
               aria-label="Nuevo comentario"
@@ -478,7 +481,7 @@ function TaskDetail({ task, projects, onClose, onUpdate, onDelete, comments, onA
   );
 }
 
-function NewTaskModal({ open, defaultCol, projects, onClose, onCreate }: any) {
+function NewTaskModal({ open, defaultCol, projects, profiles = [], onClose, onCreate }: any) {
   const [form, setForm] = useState({ title:'', project: projects[0]?.id, priority:'med', col: defaultCol || 'todo', tag:'feature', due:'', assignee: [] as string[] });
 
   function toggleAssignee(id: string) {
@@ -521,7 +524,7 @@ function NewTaskModal({ open, defaultCol, projects, onClose, onCreate }: any) {
         <div>
           <div className="text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Asignar a</div>
           <div className="flex flex-wrap gap-2">
-            {TEAM.map(u => {
+            {profiles.map(u => {
               const on = form.assignee.includes(u.id);
               return (
                 <button key={u.id} type="button" onClick={() => toggleAssignee(u.id)}
@@ -580,7 +583,8 @@ function kanbanReducer(state: any, action: any) {
   }
 }
 
-export default function Kanban({ tasks, setTasks, projects }: any) {
+export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any) {
+  const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(kanbanReducer, null, () => ({
     ...KANBAN_INIT,
     columnTitles: Object.fromEntries(COLUMNS.map(c => [c.id, c.title])),
@@ -650,7 +654,7 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
     moveTask(id, colId, progress)
       .then(() => {
         if (task.col !== 'done' && colId === 'done') {
-          notifyTaskCompleted(task.title, TEAM[0]?.id ?? '');
+          notifyTaskCompleted(task.title, currentUser?.id ?? '');
         }
       })
       .catch(() => {
@@ -714,7 +718,7 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
         </div>
 
         <div className="flex items-center [&>*+*]:-ml-2">
-          {TEAM.slice(0,4).map(u => <Avatar key={u.id} user={u} size={30} ring/>)}
+          {profiles.slice(0,4).map(u => <Avatar key={u.id} user={u} size={30} ring/>)}
           <button type="button" className="size-[30px] rounded-full bg-white border-2 border-white dark:border-transparent ring-2 ring-line text-muted hover:text-carbon flex items-center justify-center text-[14px] font-bold" aria-label="Añadir miembro">+</button>
         </div>
 
@@ -736,6 +740,7 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
             col={col}
             tasks={filtered.filter(t => t.col === col.id)}
             projects={projects}
+            profiles={profiles}
             isOver={state.overCol === col.id}
             draggingId={state.draggingId}
             onDragOver={onDragOver}
@@ -764,6 +769,7 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
         <TaskDetail key={state.openTask.id}
           task={tasks.find(t => t.id === state.openTask.id)}
           projects={projects}
+          profiles={profiles}
           onClose={() => dispatch({ type: 'CLOSE_TASK' })}
           onUpdate={async (t) => {
             const snapshot = taskListRef.current;
@@ -772,7 +778,7 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
             try {
               await updateTask(t.id, t);
               if (previous?.col !== 'done' && t.col === 'done') {
-                notifyTaskCompleted(t.title, TEAM[0]?.id ?? '');
+                notifyTaskCompleted(t.title, currentUser?.id ?? '');
               }
             } catch {
               setTasks(snapshot);
@@ -798,12 +804,13 @@ export default function Kanban({ tasks, setTasks, projects }: any) {
         open={state.newTaskOpen}
         defaultCol={state.newTaskCol}
         projects={projects}
+        profiles={profiles}
         onClose={() => dispatch({ type: 'CLOSE_NEW_TASK' })}
         onCreate={async (t) => {
           try {
             const created = await createTask(t);
             setTasks(prev => prev.map(x => x.id === t.id ? created : x));
-            notifyTaskCreated(created.title, TEAM[0]?.id ?? '');
+            notifyTaskCreated(created.title, currentUser?.id ?? '');
           } catch {
             setTasks(prev => [...prev, t]);
             showToast('Error al crear la tarea');

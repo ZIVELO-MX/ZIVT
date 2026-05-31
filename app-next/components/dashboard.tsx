@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, AvatarStack, Tag, ProgressBar, Avatar } from './ui'
 import { TEAM, ACTIVITY_INIT, formatDate, formatMoney, daysUntil } from '@/lib/data'
 import { useRole } from '@/lib/supabase/useRole'
-import type { Client, ProfilePermission, Project, Task } from '@/lib/supabase/types'
+import type { Client, Profile, ProfilePermission, Project, Task } from '@/lib/supabase/types'
 
 function StatCard({ label, value, delta, trend, sub, accent = undefined }: any) {
   const isUp = trend === 'up';
@@ -85,7 +85,7 @@ function MiniBarChart({ data, color = '#D72228' }: any) {
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
         <span>0</span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: color }} />
+          <span className="size-2 rounded-sm" style={{ backgroundColor: color }} />
           Tareas completadas
         </span>
         <span className="nums">{max}</span>
@@ -133,6 +133,8 @@ const EVENT_COLORS: Record<string, string> = {
   member_joined:   '#1E6B3C',
 };
 
+const MONTH_LABELS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+
 function timeAgo(ts: string): string {
   const diff = Date.now() - new Date(ts).getTime();
   const min  = Math.floor(diff / 60_000);
@@ -156,7 +158,7 @@ function ActivityFeed() {
           <p className="text-[12.5px] text-muted">Últimas acciones del equipo</p>
         </div>
         {limit < ACTIVITY_INIT.length && (
-          <button
+          <button type="button"
             onClick={() => setLimit(l => Math.min(l + 7, ACTIVITY_INIT.length))}
             className="text-[12.5px] font-semibold text-zred hover:underline"
           >
@@ -172,10 +174,10 @@ function ActivityFeed() {
           return (
             <div key={ev.id} className="flex items-start gap-3 py-3">
               <div className="relative shrink-0">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold" style={{ background: user?.color || '#6B6B6B' }}>
+                <div className="size-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold" style={{ background: user?.color || '#6B6B6B' }}>
                   {user?.initials || '?'}
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border border-white dark:border-carbon flex items-center justify-center text-[9px] font-bold text-white leading-none" style={{ background: color }}>
+                <span className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full border border-white dark:border-carbon flex items-center justify-center text-[9px] font-bold text-white leading-none" style={{ background: color }}>
                   {icon}
                 </span>
               </div>
@@ -201,19 +203,20 @@ type DashboardProps = {
   clients: Client[]
   permission?: ProfilePermission
   setView: (view: string) => void
+  profiles?: Profile[]
 }
 
-export default function Dashboard({ projects, tasks, clients, permission, setView }: DashboardProps) {
+export default function Dashboard({ projects, tasks, clients, permission, setView, profiles = [] }: DashboardProps) {
   const role = useRole()
   const [activePeriod, setActivePeriod] = useState('6M')
-  const now = new Date()
+  const [now, setNow] = useState(new Date())
   const currentMonth = now.getMonth()
-  const todayLabel = new Intl.DateTimeFormat('es-MX', {
+  const todayLabel = useMemo(() => new Intl.DateTimeFormat('es-MX', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(new Date())
+  }).format(now), [now])
   const currentPermission = role ?? permission
   const canViewRevenue = currentPermission === 'admin' || currentPermission === 'founder'
   const activeProjects = projects.filter(p => p.status === 'in_progress' || p.status === 'review').length;
@@ -225,7 +228,6 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
   const totalMRR = canViewRevenue ? clients.reduce((s,c) => s + c.mrr, 0) : 0;
 
   const currentYear = now.getFullYear()
-  const MONTH_LABELS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
   const trend = MONTH_LABELS.map((l, m) => {
     const v = tasks.filter(t => {
       if (t.col !== 'done') return false
@@ -270,14 +272,14 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
     <div className="p-8 space-y-6">
       <div className="p-7 text-white relative overflow-hidden border border-carbon rounded-lg" style={{background:'#1D1D1B'}}>
         <div className="absolute inset-0 grid-bg opacity-[0.05]"/>
-        <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full bg-zred/20 blur-2xl"/>
+        <div className="absolute -right-8 -top-8 size-48 rounded-full bg-zred/20 blur-2xl"/>
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/60 mb-2">
               {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
             </div>
             <h2 className="text-[32px] font-extrabold tracking-tight leading-tight mb-2">
-              {new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {TEAM[0]?.name.split(' ')[0] || 'Raúl'}.
+              {now.getHours() < 12 ? 'Buenos días' : now.getHours() < 19 ? 'Buenas tardes' : 'Buenas noches'}, {TEAM[0]?.name.split(' ')[0] || 'Raúl'}.
             </h2>
             <p className="text-white/70 text-[15px] leading-relaxed max-w-[460px]">
               Tienes <span className="text-white font-semibold">{inProgress} tareas activas</span> y{' '}
@@ -330,7 +332,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
             </div>
             <div className="flex gap-2 text-[12px]">
               {['6M', 'YTD', '12M'].map(period => (
-                <button key={period} onClick={() => setActivePeriod(period)}
+                <button type="button" key={period} onClick={() => setActivePeriod(period)}
                   className={`px-3 h-8 rounded-full font-semibold transition-colors ${activePeriod === period ? 'bg-carbon text-white shadow-soft' : 'text-muted hover:bg-soft hover:text-carbon'}`}>
                   {period}
                 </button>
@@ -360,7 +362,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
             <div className="flex-1 space-y-2.5">
               {statusSegments.map(s => (
                 <div key={s.name} className="flex items-center gap-2 text-[12.5px]">
-                  <span className="w-2.5 h-2.5 rounded-sm" style={{background: s.color}} />
+                  <span className="size-2.5 rounded-sm" style={{background: s.color}} />
                   <span className="flex-1 text-carbon">{s.name}</span>
                   <span className="font-semibold nums">{s.v}</span>
                 </div>
@@ -377,7 +379,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
               <h3 className="font-bold text-[16px]">Próximas entregas</h3>
               <p className="text-[12.5px] text-muted">Ordenadas por fecha de vencimiento</p>
             </div>
-            <button onClick={() => setView('kanban')} className="text-[12.5px] font-semibold text-zred hover:underline">Ver todas →</button>
+            <button type="button" onClick={() => setView('kanban')} className="text-[12.5px] font-semibold text-zred hover:underline">Ver todas →</button>
           </div>
           {upcoming.length === 0 ? (
             <div className="py-10 text-center text-muted">
@@ -402,7 +404,7 @@ export default function Dashboard({ projects, tasks, clients, permission, setVie
                         <Tag tag={t.tag} />
                       </div>
                     </div>
-                    <AvatarStack users={t.assignee.map(id => TEAM.find(u=>u.id===id)).filter(Boolean)} size={24} max={3} />
+                    <AvatarStack users={t.assignee.flatMap(id => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })} size={24} max={3} />
                     <div className="text-right shrink-0 w-[110px]">
                       <div className={`text-[12.5px] font-bold nums ${overdue ? 'text-zred' : soon ? 'text-[#E0A800]' : 'text-carbon'}`}>
                         {overdue ? `−${Math.abs(days)}d` : days === 0 ? 'Hoy' : `${days} días`}

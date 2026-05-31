@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useReducer, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, AvatarStack, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui'
 import { ConfirmDialog } from '@/components/modals'
@@ -32,13 +32,17 @@ const PROG_STATUS = [
   { value: 'done',     label: 'Completado', color: '#3CB371' },
 ]
 
+const COL_COLORS: Record<string, string> = {
+  todo: '#6B6B6B', progress: '#3A47B5', done: '#1E6B3C',
+}
+
 function LearningProgressStack({ members, progress }: { members: any[]; progress: Record<string, string> }) {
   const doneCount = members.filter(u => progress?.[u.id] === 'done').length
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex items-center -space-x-1.5">
-        {members.slice(0, 3).map(u => (
-          <div key={u.id} style={{ display: 'inline-flex', borderRadius: '50%', border: `2px solid ${PROG_COLOR[progress?.[u.id] || 'todo']}` }}>
+      <div className="flex items-center">
+        {members.slice(0, 3).map((u, i) => (
+          <div key={u.id} className={i > 0 ? '-ml-1.5' : ''} style={{ borderRadius: '50%', border: `2px solid ${PROG_COLOR[progress?.[u.id] || 'todo']}` }}>
             <Avatar user={u} size={22} />
           </div>
         ))}
@@ -55,17 +59,18 @@ function LearningProgressStack({ members, progress }: { members: any[]; progress
 
 function LearningCard({ task, onClick, onDragStart, onDragEnd, dragging }: any) {
   const res = LEARNING_RESOURCE[task.type]
-  const assignees = task.assignee.map((id: string) => TEAM.find(u => u.id === id)).filter(Boolean)
+  const assignees = task.assignee.flatMap((id: string) => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })
   const days = task.due ? daysUntil(task.due) : null
   const overdue = days !== null && days < 0 && task.col !== 'done'
 
   return (
-    <div
+    <button
+      type="button"
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`bg-white border border-line2 rounded-lg p-4 cursor-pointer select-none transition-all hover:-translate-y-0.5 hover:shadow-card hover:border-zred/20 ${dragging ? 'dragging' : ''}`}
+      className={`bg-white border border-line2 rounded-lg p-4 cursor-pointer select-none transition-all hover:-translate-y-0.5 hover:shadow-card hover:border-zred/20 text-left w-full ${dragging ? 'dragging' : ''}`}
     >
       <div className="flex items-start justify-between gap-2 mb-2.5">
         <Badge className={res.cls}>
@@ -78,7 +83,7 @@ function LearningCard({ task, onClick, onDragStart, onDragEnd, dragging }: any) 
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
-            className="w-7 h-7 rounded-full border border-line2 hover:border-zred hover:text-zred inline-flex items-center justify-center text-muted transition-colors shrink-0"
+            className="size-7 rounded-full border border-line2 hover:border-zred hover:text-zred inline-flex items-center justify-center text-muted transition-colors shrink-0"
             title="Abrir recurso"
           >
             <Ic.Arrow width="13" height="13" />
@@ -116,7 +121,7 @@ function LearningCard({ task, onClick, onDragStart, onDragEnd, dragging }: any) 
           )}
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -135,7 +140,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
   const [saved, setSaved] = useState(false)
   const set = (k: string, v: any) => setEdit((f: any) => ({ ...f, [k]: v }))
 
-  useEffect(() => { if (open) { setEdit({ ...task }); setSaved(false) } }, [task, open])
+  // edit state is reset via key={task.id} on parent
 
   function save() {
     const prog = edit.progress || {}
@@ -146,7 +151,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
   }
 
   const res = LEARNING_RESOURCE[edit.type as LearningResourceType]
-  const assignees = edit.assignee.map((id: string) => TEAM.find(u => u.id === id)).filter(Boolean)
+  const assignees = edit.assignee.flatMap((id: string) => { const m = TEAM.find(u => u.id === id); return m ? [m] : [] })
 
   return (
     <Modal open={open} onClose={onClose} title="Detalle del recurso" width={560}
@@ -180,6 +185,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
               value={edit.url}
               onChange={(e: any) => set('url', e.target.value)}
               placeholder="https://..."
+              aria-label="URL del recurso"
               className="flex-1 h-11 px-4 rounded-md border border-line bg-white text-[14px] placeholder:text-muted/70 transition-all font-mono text-[13px]"
             />
             {edit.url && (
@@ -209,6 +215,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
           <div>
             <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">Fecha límite</span>
             <input type="date" value={edit.due || ''} onChange={(e: any) => set('due', e.target.value || null)}
+              aria-label="Fecha límite"
               className="w-full h-11 px-4 rounded-md border border-line bg-white text-[14px] transition-all" />
           </div>
         </div>
@@ -216,7 +223,8 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
         <div>
           <span className="block text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Asignados</span>
           <div className="flex flex-wrap gap-2">
-            {TEAM.filter(u => u.status === 'active').map(u => {
+            {TEAM.map(u => {
+              if (u.status !== 'active') return null
               const on = edit.assignee.includes(u.id)
               return (
                 <button key={u.id} type="button"
@@ -246,7 +254,7 @@ function LearningDetailModal({ task, open, onClose, onUpdate, onDelete }: any) {
                     <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{u.name.split(' ')[0]}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       {PROG_STATUS.map(s => (
-                        <button key={s.value} onClick={() => set('progress', { ...(edit.progress || {}), [uid]: s.value })}
+                        <button type="button" key={s.value} onClick={() => set('progress', { ...(edit.progress || {}), [uid]: s.value })}
                           title={s.label}
                           className={`px-2.5 h-7 rounded-full text-[11px] font-semibold border transition-all ${
                             status === s.value ? 'text-white border-transparent' : 'bg-white border-line text-muted hover:border-line2'
@@ -275,11 +283,11 @@ const EMPTY_FORM = (): Omit<LearningTask, 'id'> => ({
 })
 
 function NewLearningModal({ open, onClose, onCreate }: any) {
-  const [form, setForm] = useState(EMPTY_FORM())
+  const [form, setForm] = useState(() => EMPTY_FORM())
   const [tagInput, setTagInput] = useState('')
   const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  useEffect(() => { if (open) { setForm(EMPTY_FORM()); setTagInput('') } }, [open])
+  // form is reset via key={String(open)} on parent
 
   function addTag() {
     const t = tagInput.trim()
@@ -314,6 +322,7 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
           <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">URL del recurso</span>
           <input type="url" value={form.url} onChange={(e: any) => set('url', e.target.value)}
             placeholder="https://..."
+            aria-label="URL del recurso"
             className="w-full h-11 px-4 rounded-md border border-line bg-white text-[14px] placeholder:text-muted/70 transition-all font-mono text-[13px]" />
         </div>
 
@@ -328,6 +337,7 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
           <div>
             <span className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">Fecha límite</span>
             <input type="date" value={form.due || ''} onChange={(e: any) => set('due', e.target.value || null)}
+              aria-label="Fecha límite"
               className="w-full h-11 px-4 rounded-md border border-line bg-white text-[14px] transition-all" />
           </div>
           <div>
@@ -336,8 +346,9 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
               <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 placeholder="Ej: Frontend"
+                aria-label="Etiqueta"
                 className="flex-1 h-11 px-3 rounded-md border border-line bg-white text-[13px] placeholder:text-muted/70 transition-all" />
-              <button onClick={addTag} className="w-11 h-11 rounded-md border border-line hover:border-zred hover:text-zred inline-flex items-center justify-center text-muted transition-colors">
+              <button type="button" onClick={addTag} className="size-11 rounded-md border border-line hover:border-zred hover:text-zred inline-flex items-center justify-center text-muted transition-colors">
                 <Ic.Plus width="14" height="14" />
               </button>
             </div>
@@ -346,7 +357,7 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
                 {form.tags.map(t => (
                   <span key={t} className="text-[11px] bg-soft text-muted px-2 py-0.5 rounded-full flex items-center gap-1">
                     {t}
-                    <button onClick={() => set('tags', form.tags.filter(x => x !== t))} className="hover:text-zred">
+                    <button type="button" onClick={() => set('tags', form.tags.filter(x => x !== t))} className="hover:text-zred">
                       <Ic.X width="10" height="10" />
                     </button>
                   </span>
@@ -359,7 +370,8 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
         <div>
           <span className="block text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Asignar a</span>
           <div className="flex flex-wrap gap-2">
-            {TEAM.filter(u => u.status === 'active').map(u => {
+            {TEAM.map(u => {
+              if (u.status !== 'active') return null
               const on = form.assignee.includes(u.id)
               return (
                 <button key={u.id} type="button"
@@ -382,9 +394,6 @@ function NewLearningModal({ open, onClose, onCreate }: any) {
 // ─── Column ────────────────────────────────────────────────────────────────────
 
 function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd }: any) {
-  const COL_COLORS: Record<string, string> = {
-    todo: '#6B6B6B', progress: '#3A47B5', done: '#1E6B3C',
-  }
 
   return (
     <div
@@ -396,11 +405,11 @@ function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, o
     >
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full" style={{ background: COL_COLORS[col.id] }} />
+          <span className="size-2 rounded-full" style={{ background: COL_COLORS[col.id] }} />
           <h3 className="text-[13px] font-bold tracking-tight">{col.title}</h3>
           <span className="inline-flex items-center justify-center min-w-[22px] h-[20px] px-1.5 rounded-full bg-white border border-line2 text-[11px] font-bold nums">{tasks.length}</span>
         </div>
-        <button onClick={() => onAdd(col.id)} className="w-7 h-7 rounded hover:bg-white inline-flex items-center justify-center text-muted hover:text-carbon transition-colors">
+        <button type="button" onClick={() => onAdd(col.id)} className="size-7 rounded hover:bg-white inline-flex items-center justify-center text-muted hover:text-carbon transition-colors">
           <Ic.Plus width="14" height="14" />
         </button>
       </div>
@@ -419,7 +428,7 @@ function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, o
         ))}
         {tasks.length === 0 && (
           <div className="flex flex-col items-center justify-center text-center py-8 px-3 border-2 border-dashed border-line rounded-md text-muted">
-            <div className="w-8 h-8 rounded-full bg-white border border-line2 inline-flex items-center justify-center mb-2">
+            <div className="size-8 rounded-full bg-white border border-line2 inline-flex items-center justify-center mb-2">
               <Ic.Plus width="14" height="14" />
             </div>
             <div className="text-[11.5px]">Arrastra recursos aquí</div>
@@ -427,7 +436,7 @@ function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, o
         )}
       </div>
 
-      <button onClick={() => onAdd(col.id)} className="text-[12px] font-semibold text-muted hover:text-zred text-left px-1 py-1.5 transition-colors">
+      <button type="button" onClick={() => onAdd(col.id)} className="text-[12px] font-semibold text-muted hover:text-zred text-left px-1 py-1.5 transition-colors">
         + Añadir recurso
       </button>
     </div>
@@ -436,15 +445,47 @@ function LearningColumn({ col, tasks, onDrop, onDragOver, onDragLeave, isOver, o
 
 // ─── Main export ───────────────────────────────────────────────────────────────
 
-export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; setTasks: (t: LearningTask[]) => void }) {
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const [overCol, setOverCol] = useState<string | null>(null)
-  const [selected, setSelected] = useState<LearningTask | null>(null)
-  const [newOpen, setNewOpen] = useState(false)
-  const [newDefaultCol, setNewDefaultCol] = useState<string>('todo')
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+type LearningState = {
+  draggingId: string | null
+  overCol: string | null
+  selected: LearningTask | null
+  newOpen: boolean
+  confirmDelete: string | null
+}
 
-  const stats = {
+type LearningAction =
+  | { type: 'DRAG_START'; id: string }
+  | { type: 'DRAG_END' }
+  | { type: 'DRAG_OVER'; colId: string }
+  | { type: 'DRAG_LEAVE' }
+  | { type: 'SELECT'; task: LearningTask | null }
+  | { type: 'OPEN_NEW' }
+  | { type: 'CLOSE_NEW' }
+  | { type: 'CONFIRM_DELETE'; id: string | null }
+
+const initialState: LearningState = {
+  draggingId: null, overCol: null, selected: null,
+  newOpen: false, confirmDelete: null,
+}
+
+function learningReducer(state: LearningState, action: LearningAction): LearningState {
+  switch (action.type) {
+    case 'DRAG_START': return { ...state, draggingId: action.id }
+    case 'DRAG_END': return { ...state, draggingId: null, overCol: null }
+    case 'DRAG_OVER': return { ...state, overCol: action.colId }
+    case 'DRAG_LEAVE': return { ...state, overCol: null }
+    case 'SELECT': return { ...state, selected: action.task }
+    case 'OPEN_NEW': return { ...state, newOpen: true }
+    case 'CLOSE_NEW': return { ...state, newOpen: false }
+    case 'CONFIRM_DELETE': return { ...state, confirmDelete: action.id }
+  }
+}
+
+export default function Learning({ tasks, setTasks, profiles = [] }: { tasks: LearningTask[]; setTasks: (t: LearningTask[]) => void; profiles?: any[] }) {
+  const [state, dispatch] = useReducer(learningReducer, initialState)
+  const { draggingId, overCol, selected, newOpen, confirmDelete } = state
+
+  const stats = useMemo(() => ({
     total: tasks.length,
     done: tasks.filter(t => t.col === 'done').length,
     inProgress: tasks.filter(t => t.col === 'progress').length,
@@ -453,12 +494,12 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
       const m2 = t.duration.match(/(\d+)\s*min/)
       return sum + (m ? parseFloat(m[1]) : 0) + (m2 ? parseInt(m2[1]) / 60 : 0)
     }, 0),
-  }
+  }), [tasks])
 
-  function onDragStart(id: string) { setDraggingId(id) }
-  function onDragEnd() { setDraggingId(null); setOverCol(null) }
-  function onDragOver(e: React.DragEvent, colId: string) { e.preventDefault(); setOverCol(colId) }
-  function onDragLeave() { setOverCol(null) }
+  function onDragStart(id: string) { dispatch({ type: 'DRAG_START', id }) }
+  function onDragEnd() { dispatch({ type: 'DRAG_END' }) }
+  function onDragOver(e: React.DragEvent, colId: string) { e.preventDefault(); dispatch({ type: 'DRAG_OVER', colId }) }
+  function onDragLeave() { dispatch({ type: 'DRAG_LEAVE' }) }
   function onDrop(e: React.DragEvent, colId: string) {
     e.preventDefault()
     if (!draggingId) return
@@ -471,17 +512,17 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
       }
       return { ...t, col: colId as LearningTask['col'] }
     }))
-    setDraggingId(null); setOverCol(null)
+    dispatch({ type: 'DRAG_END' })
   }
 
   function handleUpdate(updated: LearningTask) {
     setTasks(tasks.map(t => t.id === updated.id ? updated : t))
-    setSelected(updated)
+    dispatch({ type: 'SELECT', task: updated })
   }
 
   function handleDelete(id: string) {
     setTasks(tasks.filter(t => t.id !== id))
-    setSelected(null)
+    dispatch({ type: 'SELECT', task: null })
   }
 
   function handleCreate(task: LearningTask) {
@@ -505,7 +546,7 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
             </div>
           ))}
         </div>
-        <Button variant="primary" onClick={() => { setNewDefaultCol('todo'); setNewOpen(true) }}>
+        <Button variant="primary" onClick={() => dispatch({ type: 'OPEN_NEW' })}>
           <Ic.Plus width="15" height="15" /> Nuevo recurso
         </Button>
       </div>
@@ -523,10 +564,10 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
               onDrop={onDrop}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
-              onCardClick={setSelected}
+              onCardClick={(t: LearningTask) => dispatch({ type: 'SELECT', task: t })}
               onCardDragStart={onDragStart}
               onCardDragEnd={onDragEnd}
-              onAdd={(colId: string) => { setNewDefaultCol(colId); setNewOpen(true) }}
+              onAdd={() => dispatch({ type: 'OPEN_NEW' })}
             />
           ))}
         </div>
@@ -535,19 +576,20 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
       {/* Modals */}
       {selected && (
         <LearningDetailModal
+          key={selected.id}
           task={selected}
           open={!!selected}
-          onClose={() => setSelected(null)}
+          onClose={() => dispatch({ type: 'SELECT', task: null })}
           onUpdate={handleUpdate}
-          onDelete={(id: string) => setConfirmDelete(id)}
+          onDelete={(id: string) => dispatch({ type: 'CONFIRM_DELETE', id })}
         />
       )}
 
       <NewLearningModal
+        key={String(newOpen)}
         open={newOpen}
-        onClose={() => setNewOpen(false)}
+        onClose={() => dispatch({ type: 'CLOSE_NEW' })}
         onCreate={handleCreate}
-        defaultCol={newDefaultCol}
       />
 
       <ConfirmDialog
@@ -556,8 +598,8 @@ export default function Learning({ tasks, setTasks }: { tasks: LearningTask[]; s
         message="Se eliminará este recurso de aprendizaje del tablero."
         confirmLabel="Eliminar"
         tone="danger"
-        onConfirm={() => { if (confirmDelete) handleDelete(confirmDelete); setConfirmDelete(null) }}
-        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => { if (confirmDelete) handleDelete(confirmDelete); dispatch({ type: 'CONFIRM_DELETE', id: null }) }}
+        onCancel={() => dispatch({ type: 'CONFIRM_DELETE', id: null })}
       />
     </div>
   )

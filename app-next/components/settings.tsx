@@ -24,17 +24,19 @@ function SettingRow({ label, description, children }: { label: string; descripti
   )
 }
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
   return (
     <button
+      type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={onChange}
       className={`inline-flex items-center w-11 h-6 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-zred ${
         checked ? 'bg-zred' : 'bg-soft border border-line'
       }`}
     >
-      <span className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
+      <span className={`size-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0.5'}`} />
     </button>
   )
 }
@@ -88,12 +90,12 @@ function AppearanceSection({
       <SectionHeading>Apariencia</SectionHeading>
       <div className="bg-white border border-line2 rounded-lg overflow-hidden">
         <SettingRow label="Tema de color" description={dark ? 'Modo oscuro activo' : 'Modo claro activo'}>
-          <Toggle checked={dark} onChange={onToggleDark} />
+          <Toggle checked={dark} onChange={onToggleDark} label="Activar modo oscuro" />
         </SettingRow>
         <SettingRow label="Densidad de UI" description="Ajusta el espaciado global de todos los elementos">
           <div className="flex items-center gap-1.5">
             {DENSITIES.map(d => (
-              <button key={d.value} onClick={() => setDensity(d.value)} title={d.description}
+              <button type="button" key={d.value} onClick={() => setDensity(d.value)} title={d.description}
                 className={`px-3 h-8 rounded-full text-[12.5px] font-semibold border transition-all ${
                   density === d.value
                     ? 'bg-carbon text-white border-carbon'
@@ -131,7 +133,7 @@ function NotificationsSection({ toast }: { toast: (msg: string) => void }) {
       <div className="bg-white border border-line2 rounded-lg overflow-hidden">
         {NOTIF_ROWS.map(row => (
           <SettingRow key={row.key} label={row.label} description={row.description}>
-            <Toggle checked={prefs[row.key]} onChange={() => toggle(row.key)} />
+            <Toggle checked={prefs[row.key]} onChange={() => toggle(row.key)} label={row.label} />
           </SettingRow>
         ))}
       </div>
@@ -163,7 +165,7 @@ function TeamSection({ toast }: { toast: (msg: string) => void }) {
             <div className="relative">
               <Avatar user={u} size={38} />
               <span
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-[#1A1A18]"
+                className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full ring-2 ring-white dark:ring-[#1A1A18]"
                 style={{ background: STATUS_COLOR[u.status] }}
               />
             </div>
@@ -233,13 +235,13 @@ export function SettingsView({ dark, onToggleDark, density, setDensity }: {
   }, [toastMsg])
 
   return (
-    <div className="px-8 py-8 max-w-[960px] mx-auto">
+    <div className="p-8 max-w-[960px] mx-auto">
       <div className="flex gap-8">
 
         {/* Left nav */}
         <nav className="w-[200px] shrink-0 space-y-0.5" aria-label="Secciones de configuración">
           {NAV_SECTIONS.map(s => (
-            <button key={s.id} onClick={() => setSection(s.id)}
+            <button type="button" key={s.id} onClick={() => setSection(s.id)}
               className={`w-full flex items-center gap-3 px-3 h-9 rounded-md text-[13.5px] font-medium transition-colors text-left
                 ${section === s.id ? 'bg-carbon text-white' : 'text-carbon hover:bg-soft'}`}>
               <span className={section === s.id ? 'text-white' : 'text-muted'}>{s.icon}</span>

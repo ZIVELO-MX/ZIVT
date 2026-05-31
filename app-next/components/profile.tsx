@@ -34,8 +34,9 @@ function computeXP(userId: string, tasks: Task[], projects: Project[], joinDate:
     xp += Math.floor(p.tasksDone / Math.max(p.team.length, 1) * 15)
   })
 
-  tasks.filter(t => t.col === 'done' && t.assignee.includes(userId)).forEach(() => { xp += 20 })
-  tasks.filter(t => t.assignee.includes(userId)).forEach(t => {
+  tasks.forEach(t => {
+    if (!t.assignee.includes(userId)) return
+    if (t.col === 'done') xp += 20
     t.subtasks.forEach(s => { if (s.d) xp += 5 })
   })
 
@@ -56,7 +57,7 @@ type AchievementDef = {
   check: (s: Stats) => boolean
 }
 
-const iconCls = 'w-full h-full'
+const iconCls = 'size-full'
 const ACHIEVEMENTS: AchievementDef[] = [
   // Ejecución
   {
@@ -142,7 +143,8 @@ const CATEGORIES = [
 function buildActivity(userId: string, tasks: Task[], projects: Project[]) {
   const items: { icon: React.ReactNode; text: string; sub: string; date: string }[] = []
 
-  tasks.filter(t => t.col === 'done' && t.assignee.includes(userId)).forEach(t => {
+  tasks.forEach(t => {
+    if (t.col !== 'done' || !t.assignee.includes(userId)) return
     const p = projects.find(pr => pr.id === t.project)
     items.push({
       icon: <Ic.Check width="14" height="14" />,
@@ -152,7 +154,8 @@ function buildActivity(userId: string, tasks: Task[], projects: Project[]) {
     })
   })
 
-  projects.filter(p => p.team.includes(userId) && p.status === 'done').forEach(p => {
+  projects.forEach(p => {
+    if (!p.team.includes(userId) || p.status !== 'done') return
     items.push({
       icon: <Ic.Folder width="14" height="14" />,
       text: `Proyecto entregado al 100%`,
@@ -161,7 +164,8 @@ function buildActivity(userId: string, tasks: Task[], projects: Project[]) {
     })
   })
 
-  projects.filter(p => p.team.includes(userId) && p.status === 'review').forEach(p => {
+  projects.forEach(p => {
+    if (!p.team.includes(userId) || p.status !== 'review') return
     items.push({
       icon: <Ic.Clock width="14" height="14" />,
       text: `Proyecto enviado a revisión`,
@@ -170,7 +174,8 @@ function buildActivity(userId: string, tasks: Task[], projects: Project[]) {
     })
   })
 
-  tasks.filter(t => t.col === 'progress' && t.assignee.includes(userId)).forEach(t => {
+  tasks.forEach(t => {
+    if (t.col !== 'progress' || !t.assignee.includes(userId)) return
     const p = projects.find(pr => pr.id === t.project)
     items.push({
       icon: <Ic.Arrow width="14" height="14" />,
@@ -206,7 +211,7 @@ function AchievementBadge({ def, unlocked, catColor, catBg, catTx }: {
         : 'border-line2 bg-soft/50 opacity-50'
     }`}>
       <div
-        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${unlocked ? catBg : 'bg-soft'} ${unlocked ? catTx : 'text-muted'}`}
+        className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${unlocked ? catBg : 'bg-soft'} ${unlocked ? catTx : 'text-muted'}`}
       >
         {def.icon}
       </div>
@@ -243,10 +248,10 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
     t.due && t.col !== 'done' && t.assignee.includes(user.id) &&
     new Date(t.due) < new Date()
   )
-  const subtasksDone = tasks
-    .filter(t => t.assignee.includes(user.id))
-    .flatMap(t => t.subtasks)
-    .filter(s => s.d).length
+  const subtasksDone = tasks.reduce((count, t) => {
+    if (!t.assignee.includes(user.id)) return count
+    return count + t.subtasks.filter(s => s.d).length
+  }, 0)
 
   const stats: Stats = {
     tasksDone: doneTasks.length + Math.floor(userProjects.reduce((s, p) => s + p.tasksDone / Math.max(p.team.length, 1), 0)),
@@ -257,16 +262,16 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
     overdueCount: overdueTasks.length,
   }
 
-  const unlockedIds = new Set(ACHIEVEMENTS.filter(a => a.check(stats)).map(a => a.id))
+  const unlockedIds = new Set(ACHIEVEMENTS.flatMap(a => a.check(stats) ? [a.id] : []))
   const activity = useMemo(() => buildActivity(user.id, tasks, projects), [tasks, projects, user.id])
 
   return (
-    <div className="px-8 py-8 max-w-[1100px] mx-auto space-y-6">
+    <div className="p-8 max-w-[1100px] mx-auto space-y-6">
 
       {/* Hero */}
       <div className="relative rounded-lg overflow-hidden border border-carbon p-7 text-white" style={{ background: '#1D1D1B' }}>
         <div className="absolute inset-0 grid-bg opacity-[0.05]" />
-        <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-zred/20 blur-3xl" />
+        <div className="absolute -right-12 -top-12 size-64 rounded-full bg-zred/20 blur-3xl" />
 
         <div className="relative flex flex-wrap items-center gap-6">
           <Avatar user={user} size={72} />
@@ -348,7 +353,7 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
             return (
               <div key={cat.id}>
                 <div className="flex items-center gap-2 mb-2.5">
-                  <div className={`w-5 h-5 rounded flex items-center justify-center ${cat.bg} ${cat.tx}`}>
+                  <div className={`size-5 rounded flex items-center justify-center ${cat.bg} ${cat.tx}`}>
                     {cat.id === 'execution'     && <Ic.Check width="12" height="12" />}
                     {cat.id === 'collaboration' && <Ic.Users width="12" height="12" />}
                     {cat.id === 'speed'         && <Ic.Clock width="12" height="12" />}
@@ -381,8 +386,8 @@ export default function ProfileView({ tasks, projects }: { tasks: Task[]; projec
             <div className="absolute left-[18px] top-0 bottom-0 w-px bg-line2" />
             <div className="space-y-1">
               {activity.map((item, i) => (
-                <div key={i} className="flex items-start gap-3 pb-4">
-                  <div className="relative z-10 w-9 h-9 rounded-full bg-white border border-line2 flex items-center justify-center text-muted shrink-0">
+                <div key={`${item.text}-${i}`} className="flex items-start gap-3 pb-4">
+                  <div className="relative z-10 size-9 rounded-full bg-white border border-line2 flex items-center justify-center text-muted shrink-0">
                     {item.icon}
                   </div>
                   <div className="pt-1 min-w-0">

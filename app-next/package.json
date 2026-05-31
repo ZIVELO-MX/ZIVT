@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -20,6 +21,7 @@
     "@types/node": "25.8.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "react-doctor": "^0.2.14",
     "tailwindcss": "4.3.0",
     "typescript": "6.0.3"
   }

@@ -3,8 +3,9 @@
 import Image from 'next/image'
 import { Ic } from '@/components/icons'
 import { Avatar, IconButton } from '@/components/ui'
-import { TEAM } from '@/lib/data'
 import { useRole } from '@/lib/supabase/useRole'
+import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
+import type { Profile } from '@/lib/supabase/types'
 
 export function Logo({ collapsed }: any) {
   return (
@@ -46,7 +47,7 @@ export function NavItem({ icon, label, active, badge, onClick, collapsed }: any)
   )
 }
 
-export function Sidebar({ view, setView, counts, collapsed, onToggle, onInvite, onSettings, mobileOpen, onMobileClose }: any) {
+export function Sidebar({ view, setView, counts, collapsed, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [] }: any) {
   const role = useRole()
   const hideClients = role === 'editor' || role === 'viewer'
   const items = [
@@ -127,7 +128,7 @@ export function Sidebar({ view, setView, counts, collapsed, onToggle, onInvite, 
             <>
               <div className="px-3 pt-6 pb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">Equipo</div>
               <div className="px-3 space-y-2">
-                {TEAM.slice(0, 5).map(u => (
+                {profiles.slice(0, 5).map((u: Profile) => (
                   <div key={u.id} className="flex items-center gap-2.5 py-1">
                     <div className="relative">
                       <Avatar user={u} size={26} />
@@ -146,7 +147,7 @@ export function Sidebar({ view, setView, counts, collapsed, onToggle, onInvite, 
           {collapsed && (
             <div className="pt-6 flex flex-col items-center gap-2">
               <div className="w-6 h-px bg-line2" />
-              {TEAM.slice(0, 4).map(u => (
+              {profiles.slice(0, 4).map((u: Profile) => (
                 <div key={u.id} className="relative" title={`${u.name} · ${u.role}`}>
                   <Avatar user={u} size={28} />
                   <span className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full bg-[#3CB371] ring-2 ring-white dark:ring-[#1A1A18]" />
@@ -195,6 +196,7 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
 
 export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, onOpenMenu }: any) {
   const cur = TOPBAR_TITLES[view] ?? { t: view, s: '' }
+  const currentUser = useCurrentProfile()
 
   return (
     <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-line2">
@@ -240,7 +242,9 @@ export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, user
         </IconButton>
 
         <button type="button" ref={userMenuRef} onClick={onOpenUserMenu} className="btn-press rounded-full hover:ring-2 hover:ring-line transition-[box-shadow]">
-          <Avatar user={TEAM[0]} size={36} />
+          {currentUser
+            ? <Avatar user={currentUser} size={36} />
+            : <div className="size-9 rounded-full bg-soft border border-line2 animate-pulse" />}
         </button>
       </div>
     </header>

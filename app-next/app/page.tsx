@@ -143,6 +143,7 @@ export default function HomePage() {
         onSettings={() => setView('settings')}
         mobileOpen={mobileMenuOpen}
         onMobileClose={() => setMobileMenuOpen(false)}
+        profiles={profiles}
       />
       <main className="flex-1 min-w-0 relative">
         <Topbar
@@ -167,10 +168,10 @@ export default function HomePage() {
         />
 
         <div data-screen-label={view}>
-          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView}/>}
-          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects}/>}
-          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning}/>}
-          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams}/>}
+          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles}/>}
+          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles}/>}
+          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles}/>}
+          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles}/>}
           {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects}/>}
           {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles}/>}
           {view === 'settings' && (

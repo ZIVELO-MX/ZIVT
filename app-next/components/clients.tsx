@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useReducer, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ic } from '@/components/icons'
 import { Input, Select, Button, Card, Badge, AvatarStack, Drawer, Modal, Avatar } from './ui'
@@ -11,6 +11,8 @@ import { useRole } from '@/lib/supabase/useRole'
 import { exportToCSV } from '@/lib/utils'
 
 const INDUSTRIES = ['Restaurante','Retail','Construcción','Salud','Logística','SaaS','Educación','Servicios','Otro']
+const CLIENT_COLORS = ['#D72228','#1D1D1B','#2F4858','#6B6B6B','#B91C22']
+const CLIENT_FORM_EMPTY = { id:'', name:'', industry:'Restaurante', contact:'', email:'', phone:'', city:'', since: new Date().toISOString().slice(0,10), status:'lead', projects:0, mrr:0 }
 
 function ClientForm({ client, onChange }: any) {
   const set = (k, v) => onChange({ ...client, [k]: v })
@@ -38,15 +40,14 @@ function ClientForm({ client, onChange }: any) {
 
 function ClientRow({ client, onOpen, onEdit, onDelete }: any) {
   const initials = client.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
-  const colors = ['#D72228','#1D1D1B','#2F4858','#6B6B6B','#B91C22']
-  const color = colors[Math.abs(parseInt(client.id.slice(1), 10) || 0) % colors.length]
+  const color = CLIENT_COLORS[Math.abs(parseInt(client.id.slice(1), 10) || 0) % CLIENT_COLORS.length]
   const status = STATUS_LABEL[client.status]
 
   return (
     <tr className="border-b border-line2 hover:bg-soft/50 transition-colors cursor-pointer" onClick={() => onOpen(client)}>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[12px]" style={{background: color}}>
+          <div className="size-9 rounded-full flex items-center justify-center text-white font-bold text-[12px]" style={{background: color}}>
             {initials}
           </div>
           <div>
@@ -62,15 +63,15 @@ function ClientRow({ client, onOpen, onEdit, onDelete }: any) {
       <td className="px-5 py-3.5"><Badge className={status.cls}>{status.label}</Badge></td>
       <td className="px-5 py-3.5 nums text-[13px]">{client.projects}</td>
       <td className="px-5 py-3.5 nums font-semibold text-[13px]">
-        {client.mrr > 0 ? formatMoney(client.mrr).replace('MX$','$') : <span className="text-muted font-normal">—</span>}
+        {client.mrr > 0 ? formatMoney(client.mrr).replace('MX$','$') : <span className="text-muted font-normal">-</span>}
       </td>
       <td className="px-5 py-3.5 text-[12px] text-muted nums">{formatDate(client.since)}</td>
       <td className="px-5 py-3.5">
         <div className="flex items-center gap-1 justify-end" onClick={(e)=>e.stopPropagation()}>
-          <button onClick={() => onEdit(client)} className="w-8 h-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
+          <button type="button" onClick={() => onEdit(client)} className="size-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
             <Ic.Edit width="15" height="15"/>
           </button>
-          <button onClick={() => onDelete(client.id)} className="w-8 h-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
+          <button type="button" onClick={() => onDelete(client.id)} className="size-8 rounded-full hover:bg-tint hover:text-zred flex items-center justify-center text-muted transition-colors">
             <Ic.Trash width="15" height="15"/>
           </button>
         </div>
@@ -80,6 +81,7 @@ function ClientRow({ client, onOpen, onEdit, onDelete }: any) {
 }
 
 function ClientDetailDrawer({ client, projects, onClose, onEdit, onNewProject }: any) {
+  const clientAge = !client ? '...' : `${Math.max(1, Math.floor((Date.now() - new Date(client.since).getTime()) / (30*86400000)))}m`
   if (!client) return null
   const clientProjects = projects.filter(p => p.client === client.id)
   const initials = client.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
@@ -95,9 +97,9 @@ function ClientDetailDrawer({ client, projects, onClose, onEdit, onNewProject }:
           </Button>
         </div>
       }>
-      <div className="px-6 py-6 space-y-6">
+      <div className="p-6 space-y-6">
         <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-md bg-carbon text-white flex items-center justify-center font-extrabold text-[18px]">
+          <div className="size-14 rounded-md bg-carbon text-white flex items-center justify-center font-extrabold text-[18px]">
             {initials}
           </div>
           <div className="flex-1">
@@ -119,7 +121,7 @@ function ClientDetailDrawer({ client, projects, onClose, onEdit, onNewProject }:
           <div className="p-3 rounded-md bg-soft">
             <div className="text-[10.5px] font-semibold uppercase tracking-wider text-muted mb-1">Antigüedad</div>
             <div className="text-[20px] font-extrabold nums">
-              {Math.max(1, Math.floor((Date.now() - new Date(client.since).getTime()) / (30*86400000)))}m
+              {clientAge}
             </div>
           </div>
         </div>
@@ -149,7 +151,7 @@ function ClientDetailDrawer({ client, projects, onClose, onEdit, onNewProject }:
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Proyectos asociados</div>
-            <button onClick={() => onNewProject?.(client)} className="text-[12px] font-semibold text-zred hover:underline">+ Nuevo</button>
+            <button type="button" onClick={() => onNewProject?.(client)} className="text-[12px] font-semibold text-zred hover:underline">+ Nuevo</button>
           </div>
           {clientProjects.length === 0 ? (
             <div className="rounded-md border border-dashed border-line p-4 text-center text-[13px] text-muted">
@@ -184,11 +186,13 @@ function ClientDetailDrawer({ client, projects, onClose, onEdit, onNewProject }:
 }
 
 function ClientFormModal({ open, mode, initial, onClose, onSave }: any) {
-  const empty = { id:'', name:'', industry:'Restaurante', contact:'', email:'', phone:'', city:'', since: new Date().toISOString().slice(0,10), status:'lead', projects:0, mrr:0 }
-  const [form, setForm] = useState(empty)
-  useEffect(() => {
-    if (open) setForm(initial ? { ...initial } : empty)
-  }, [open, initial])
+  const [form, setForm] = useState(CLIENT_FORM_EMPTY)
+  const formKey = open ? (initial?.id || '__new__') : '__closed__'
+  const prevFormKey = useRef(formKey)
+  if (formKey !== prevFormKey.current) {
+    prevFormKey.current = formKey
+    setForm(initial ? { ...initial } : { ...CLIENT_FORM_EMPTY })
+  }
 
   function submit() {
     if (!form.name.trim()) return
@@ -212,14 +216,10 @@ function ClientFormModal({ open, mode, initial, onClose, onSave }: any) {
 export default function Clients({ clients, setClients, projects, setProjects }) {
   const router = useRouter()
   const role = useRole()
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
-  const [openDetail, setOpenDetail] = useState(null)
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState('new')
-  const [editing, setEditing] = useState(null)
-  const [confirmDel, setConfirmDel] = useState(null)
-  const [newProjectClient, setNewProjectClient] = useState(null)
+  const [page, setPage] = useReducer(
+    (prev: any, next: any) => ({ ...prev, ...next }),
+    { search: '', filter: 'all', openDetail: null, formOpen: false, formMode: 'new', editing: null, confirmDel: null, newProjectClient: null }
+  )
   const canAccessClients = role === 'founder' || role === 'admin'
 
   if (!canAccessClients) {
@@ -239,13 +239,13 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
   }
 
   const filtered = clients.filter(c => {
-    if (filter !== 'all' && c.status !== filter) return false
-    const q = search.toLowerCase()
+    if (page.filter !== 'all' && c.status !== page.filter) return false
+    const q = page.search.toLowerCase()
     return !q || c.name.toLowerCase().includes(q) || c.contact.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
   })
 
-  function openNew()        { setEditing(null); setFormMode('new'); setFormOpen(true) }
-  function openEdit(client) { setEditing(client); setFormMode('edit'); setFormOpen(true); setOpenDetail(null) }
+  function openNew()        { setPage({ editing: null, formMode: 'new', formOpen: true }) }
+  function openEdit(client) { setPage({ editing: client, formMode: 'edit', formOpen: true, openDetail: null }) }
   async function handleSave(c) {
     const isNew = !clients.find(x => x.id === c.id)
     if (isNew) {
@@ -264,12 +264,12 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
         .catch(() => { setClients(prev => prev.map(x => x.id === c.id ? (clients.find(o => o.id === c.id) ?? x) : x)) })
     }
   }
-  function handleDelete(id) { setConfirmDel(clients.find(c => c.id === id)) }
+  function handleDelete(id) { setPage({ confirmDel: clients.find(c => c.id === id) }) }
   function confirmDelete() {
-    if (!confirmDel) return
-    const snapshot = confirmDel
+    if (!page.confirmDel) return
+    const snapshot = page.confirmDel
     setClients(prev => prev.filter(x => x.id !== snapshot.id))
-    setConfirmDel(null)
+    setPage({ confirmDel: null })
     deleteClient(snapshot.id).catch(() => {
       setClients(prev => [...prev, snapshot])
     })
@@ -331,16 +331,16 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
             {id:'lead',label:'Prospectos', n: counts.lead},
             {id:'paused',label:'Pausados', n: counts.paused},
           ].map(t => (
-            <button key={t.id} onClick={()=>setFilter(t.id)}
-              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
+            <button type="button" key={t.id} onClick={()=>setPage({ filter: t.id })}
+              className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${page.filter===t.id?'bg-carbon text-white':'text-muted hover:text-carbon'}`}>
               {t.label}
-              <span className={`px-1.5 rounded-full text-[10.5px] nums ${filter===t.id?'bg-white/15':'bg-soft'}`}>{t.n}</span>
+              <span className={`px-1.5 rounded-full text-[10.5px] nums ${page.filter===t.id?'bg-white/15':'bg-soft'}`}>{t.n}</span>
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-white border border-line">
           <Ic.Search width="14" height="14" className="text-muted"/>
-          <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Buscar por nombre, contacto o email..." className="bg-transparent outline-none text-[13px] w-72"/>
+          <input value={page.search} onChange={(e)=>setPage({ search: e.target.value })} placeholder="Buscar por nombre, contacto o email..." aria-label="Buscar clientes" className="bg-transparent outline-none text-[13px] w-72"/>
         </div>
         <div className="flex-1"/>
         <Button variant="secondary" onClick={handleExportCSV}><Ic.Filter width="14" height="14"/> Exportar CSV</Button>
@@ -357,7 +357,7 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Proyectos</th>
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">MRR</th>
               <th className="px-5 py-3 font-semibold text-[11px] uppercase tracking-wider text-muted">Cliente desde</th>
-              <th className="px-5 py-3 text-right"></th>
+               <th className="px-5 py-3 text-right" aria-label="Acciones"></th>
             </tr>
           </thead>
           <tbody>
@@ -365,7 +365,7 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
               <ClientRow
                 key={c.id}
                 client={c}
-                onOpen={setOpenDetail}
+                onOpen={(c) => setPage({ openDetail: c })}
                 onEdit={openEdit}
                 onDelete={handleDelete}
               />
@@ -380,21 +380,21 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
         )}
       </Card>
 
-      <ClientDetailDrawer client={openDetail} projects={projects} onClose={()=>setOpenDetail(null)} onEdit={openEdit}
-        onNewProject={(c) => { setOpenDetail(null); setNewProjectClient(c); }} />
-      <ClientFormModal open={formOpen} mode={formMode} initial={editing} onClose={()=>setFormOpen(false)} onSave={handleSave}/>
+      <ClientDetailDrawer client={page.openDetail} projects={projects} onClose={()=>setPage({ openDetail: null })} onEdit={openEdit}
+        onNewProject={(c) => { setPage({ openDetail: null, newProjectClient: c }); }} />
+      <ClientFormModal open={page.formOpen} mode={page.formMode} initial={page.editing} onClose={()=>setPage({ formOpen: false })} onSave={handleSave}/>
       <ConfirmDialog
-        open={!!confirmDel}
+        open={!!page.confirmDel}
         title="¿Eliminar este cliente?"
-        message={confirmDel ? `Estás a punto de eliminar a ${confirmDel.name}. Los proyectos asociados quedarán sin cliente. Esta acción no se puede deshacer.` : ''}
+        message={page.confirmDel ? `Estás a punto de eliminar a ${page.confirmDel.name}. Los proyectos asociados quedarán sin cliente. Esta acción no se puede deshacer.` : ''}
         confirmLabel="Sí, eliminar"
         cancelLabel="Cancelar"
         onConfirm={confirmDelete}
-        onCancel={() => setConfirmDel(null)}
+        onCancel={() => setPage({ confirmDel: null })}
       />
-      <NewProjectModal open={!!newProjectClient} clients={clients} presetClient={newProjectClient}
-        onClose={() => setNewProjectClient(null)}
-        onCreate={(p) => { setProjects(prev => [p, ...prev]); setNewProjectClient(null); }} />
+      <NewProjectModal open={!!page.newProjectClient} clients={clients} presetClient={page.newProjectClient}
+        onClose={() => setPage({ newProjectClient: null })}
+        onCreate={(p) => { setProjects(prev => [p, ...prev]); setPage({ newProjectClient: null }); }} />
     </div>
   )
 }
