@@ -6,13 +6,12 @@ import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Ic } from '@/components/icons'
 import { Avatar, Drawer, Modal, Button, Badge, Input, Select, ProgressBar, Tag } from '@/components/ui'
-import { PROJECTS_INIT, TASKS_INIT, CLIENTS_INIT, COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, TASK_TEMPLATES, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import type { Notification } from '@/lib/supabase/types'
-import type { WorkTeam } from '@/lib/data'
 import { CustomDatePicker } from './controls'
 
 const EMPTY_NOTIFICATIONS: Notification[] = []
-const EMPTY_TEAMS: WorkTeam[] = []
+const EMPTY_TEAMS: any[] = []
 
 const KIND_LABEL: Record<string, string> = {
   page: 'Navegar', action: 'Acción', project: 'Proyecto', client: 'Cliente', task: 'Tarea',
@@ -97,9 +96,25 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
 }
 
-export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIFICATIONS, onMarkRead, onMarkAllRead, profiles = [] }: any) {
+export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIFICATIONS, onMarkRead, onMarkAllRead, profiles = [], anchorRef }: any) {
   const [tab, setTab] = useState('all')
+  const popRef = useRef(null)
   const unread = notifications.filter((n: Notification) => n.unread).length
+
+  useEffect(() => {
+    function onDown(e) {
+      if (!open) return
+      if (popRef.current?.contains(e.target)) return
+      if (anchorRef?.current?.contains(e.target)) return
+      onClose()
+    }
+    function onKey(e) { if (e.key === 'Escape') onClose() }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey) }
+  }, [open, onClose, anchorRef])
+
+  if (!open) return null
 
   const visible = tab === 'unread' ? notifications.filter((n: Notification) => n.unread) : notifications
   const groups: Record<string, Notification[]> = {}
@@ -111,27 +126,33 @@ export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIF
   })
 
   return (
-    <Drawer open={open} onClose={onClose} title={`Notificaciones${unread ? ` · ${unread}` : ''}`} width={420}
-      footer={
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] text-muted">{unread} sin leer · {notifications.length} totales</span>
-          <Button variant="secondary" size="sm" onClick={() => onMarkAllRead?.()} disabled={unread === 0}>
-            <Ic.Check width="14" height="14" /> Marcar todas leídas
-          </Button>
+    <div ref={popRef} className="absolute right-4 md:right-[56px] top-[72px] z-40 w-[360px] max-w-[calc(100vw-32px)] bg-white rounded-lg border border-line2 shadow-pop pop-in overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 100px)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-line2 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-[14.5px]">Notificaciones</span>
+          {unread > 0 && <span className="px-1.5 rounded-full bg-zred text-white text-[10.5px] nums font-semibold">{unread}</span>}
         </div>
-      }>
-      <div className="px-6 pt-4 pb-2">
+        <button type="button" onClick={onClose} className="size-7 rounded-full hover:bg-soft flex items-center justify-center text-muted transition-colors">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-4 pt-3 pb-2 shrink-0">
         <div className="flex items-center gap-1 bg-soft rounded-full p-1 w-fit">
-          <button type="button" onClick={() => setTab('all')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold ${tab === 'all' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>Todas</button>
-          <button type="button" onClick={() => setTab('unread')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${tab === 'unread' ? 'bg-white text-carbon shadow-soft' : 'text-muted'}`}>
+          <button type="button" onClick={() => setTab('all')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold transition-colors ${tab === 'all' ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>Todas</button>
+          <button type="button" onClick={() => setTab('unread')} className={`px-3 h-8 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 transition-colors ${tab === 'unread' ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
             Sin leer
             {unread > 0 && <span className="px-1.5 rounded-full bg-zred text-white text-[10.5px] nums">{unread}</span>}
           </button>
         </div>
       </div>
-      <div className="px-3 pb-4">
+
+      {/* List */}
+      <div className="overflow-y-auto flex-1 px-3 pb-3">
         {Object.entries(groups).map(([label, arr]) => (
-          <div key={label} className="mb-4">
+          <div key={label} className="mb-3">
             <div className="px-3 py-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">{label}</div>
             <div>
               {arr.map((n: Notification) => {
@@ -139,21 +160,17 @@ export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIF
                 const meta = NOTIF_ICON[n.type] || { ic: <Ic.Bell width="13" height="13" />, bg: 'bg-soft', tx: 'text-carbon' }
                 return (
                   <button type="button" key={n.id} onClick={() => onMarkRead?.(n.id)}
-                    className={`group w-full text-left p-3 rounded-md hover:bg-soft transition-colors flex items-start gap-3 relative`}>
+                    className="group w-full text-left p-3 rounded-md hover:bg-soft transition-colors flex items-start gap-3 relative">
                     {n.unread && <span className="absolute left-1 top-5 size-1.5 rounded-full bg-zred" />}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       <Avatar user={user} size={36} />
                       <span className={`absolute -bottom-1 -right-1 size-5 rounded-full ring-2 ring-white inline-flex items-center justify-center ${meta.bg} ${meta.tx}`}>
                         {meta.ic}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] leading-snug text-carbon">
-                        {n.title}
-                      </div>
-                      {n.body && (
-                        <div className="text-[12px] text-muted mt-0.5">{n.body}</div>
-                      )}
+                      <div className="text-[13px] leading-snug text-carbon">{n.title}</div>
+                      {n.body && <div className="text-[12px] text-muted mt-0.5">{n.body}</div>}
                       <div className="text-[11.5px] text-muted mt-1">{timeAgo(n.createdAt)}</div>
                     </div>
                   </button>
@@ -163,7 +180,8 @@ export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIF
           </div>
         ))}
         {visible.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">\n            <div className="size-12 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-3">
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="size-12 rounded-full bg-soft inline-flex items-center justify-center text-muted mb-3">
               <Ic.Check width="20" height="20" />
             </div>
             <div className="text-[14px] font-semibold mb-1">Todo al día</div>
@@ -171,7 +189,15 @@ export function NotificationsDrawer({ open, onClose, notifications = EMPTY_NOTIF
           </div>
         )}
       </div>
-    </Drawer>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-line2 flex items-center justify-between shrink-0">
+        <span className="text-[12px] text-muted">{unread} sin leer · {notifications.length} totales</span>
+        <Button variant="secondary" size="sm" onClick={() => onMarkAllRead?.()} disabled={unread === 0}>
+          <Ic.Check width="14" height="14" /> Marcar todas leídas
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -263,9 +289,9 @@ function CommandPaletteInner({ onClose, onNavigate, projects: dynamicProjects, c
 
   useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 50); return () => clearTimeout(t) }, [])
 
-  const projs = dynamicProjects || PROJECTS_INIT;
-  const clis = dynamicClients || CLIENTS_INIT;
-  const tks = dynamicTasks || TASKS_INIT;
+  const projs = dynamicProjects || [];
+  const clis = dynamicClients || [];
+  const tks = dynamicTasks || [];
 
   const all = useMemo(() => {
     const items = []
@@ -387,7 +413,7 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
     set('team', form.team.includes(id) ? form.team.filter(x => x !== id) : [...form.team, id])
   }
 
-  function applyTeam(wt: WorkTeam) {
+  function applyTeam(wt: any) {
     const allIn = wt.members.every(m => form.team.includes(m))
     if (allIn) {
       set('team', form.team.filter(m => !wt.members.includes(m)))
@@ -493,7 +519,7 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
           {/* Quick-select por grupo */}
           {teams.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
-              {teams.map((wt: WorkTeam) => {
+              {teams.map((wt: any) => {
                 const allIn = wt.members.every(m => form.team.includes(m))
                 return (
                   <button key={wt.id} type="button" onClick={() => applyTeam(wt)}
@@ -628,7 +654,7 @@ function detailReducer(state: DetailState, action: DetailAction): DetailState {
   }
 }
 
-export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, profiles = [] }: any) {
+export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, profiles = [], tasks = [] }: any) {
   const [state, dispatch] = useReducer(detailReducer, {
     activeTab: 'details' as DetailTab,
     files: [],
@@ -663,7 +689,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, p
   const status = STATUS_LABEL[project.status]
   const days = daysUntil(project.due)
   const overdue = days < 0 && project.status !== 'done'
-  const tasks = TASKS_INIT.filter(t => t.project === project.id)
+  const projectTasks = tasks.filter(t => t.project === project.id)
 
   function addFiles(fileList: FileList) {
     const added = Array.from(fileList).map(f => ({
@@ -899,15 +925,15 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, p
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Tareas recientes</div>
-              <span className="text-[11.5px] text-muted">{tasks.length} totales</span>
+              <span className="text-[11.5px] text-muted">{projectTasks.length} totales</span>
             </div>
-            {tasks.length === 0 ? (
+            {projectTasks.length === 0 ? (
               <div className="rounded-md border border-dashed border-line p-4 text-center text-[13px] text-muted">
                 Aún no hay tareas en este proyecto.
               </div>
             ) : (
               <div className="space-y-1.5">
-                {tasks.slice(0, 6).map(t => {
+                {projectTasks.slice(0, 6).map(t => {
                   const col = COLUMNS.find(c => c.id === t.col)
                   const isDone = t.col === 'done'
                   return (

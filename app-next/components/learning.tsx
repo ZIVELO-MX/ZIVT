@@ -4,8 +4,8 @@ import { useState, useReducer, useMemo } from 'react'
 import { Ic } from '@/components/icons'
 import { Avatar, AvatarStack, Badge, Button, Modal, Input, Select, Textarea } from '@/components/ui'
 import { ConfirmDialog } from '@/components/modals'
-import { LEARNING_COLS, LEARNING_RESOURCE, formatDate, daysUntil } from '@/lib/data'
-import type { LearningTask, LearningResourceType } from '@/lib/data'
+import { LEARNING_COLS, LEARNING_RESOURCE, formatDate, daysUntil } from '@/lib/constants'
+import type { LearningTask, LearningResourceType } from '@/lib/supabase/types'
 
 // ─── Resource type icon ────────────────────────────────────────────────────────
 
@@ -132,7 +132,6 @@ const RESOURCE_OPTIONS: { value: LearningResourceType; label: string }[] = [
   { value: 'course',  label: 'Curso' },
   { value: 'article', label: 'Artículo' },
   { value: 'book',    label: 'Libro' },
-  { value: 'podcast', label: 'Podcast' },
 ]
 
 function LearningDetailModal({ task, open, onClose, onUpdate, onDelete, profiles = [] }: any) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { TAG_STYLES } from '@/lib/data'
+import { TAG_STYLES } from '@/lib/constants'
 import { Ic } from '@/components/icons'
 
 export function Avatar({ user, size = 28, ring = false }: any) {

@@ -194,7 +194,7 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   learning:    { t: 'Aprendizaje',    s: 'Materiales de estudio y desarrollo del equipo' },
 }
 
-export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, onOpenMenu }: any) {
+export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu }: any) {
   const cur = TOPBAR_TITLES[view] ?? { t: view, s: '' }
   const currentUser = useCurrentProfile()
 
@@ -234,12 +234,14 @@ export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, user
           <Ic.Search width="18" height="18" />
         </IconButton>
 
-        <IconButton onClick={onOpenNotifs}>
-          <div className="relative">
-            <Ic.Bell width="18" height="18" />
-            <span className="absolute -top-1 -right-1 size-2 rounded-full bg-zred" />
-          </div>
-        </IconButton>
+        <div ref={notifBtnRef}>
+          <IconButton onClick={onOpenNotifs}>
+            <div className="relative">
+              <Ic.Bell width="18" height="18" />
+              <span className="absolute -top-1 -right-1 size-2 rounded-full bg-zred" />
+            </div>
+          </IconButton>
+        </div>
 
         <button type="button" ref={userMenuRef} onClick={onOpenUserMenu} className="btn-press rounded-full hover:ring-2 hover:ring-line transition-[box-shadow]">
           {currentUser

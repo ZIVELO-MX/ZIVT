@@ -4,7 +4,7 @@ import { useRef, useState, useEffect, useReducer } from 'react'
 import { useRouter } from 'next/navigation'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, ProgressBar, Avatar, AvatarStack } from './ui'
-import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/data'
+import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { ConfirmDialog, NewProjectModal, ProjectDetailDrawer } from './modals'
 import { createProject, deleteProject } from '@/lib/supabase/queries'
 
@@ -363,7 +363,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
           }
         }}
       />
-      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} onClose={() => setPage({ openDetail: null })}/>
+      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} tasks={tasks} onClose={() => setPage({ openDetail: null })}/>
       <ConfirmDialog
         open={!!page.confirmDel}
         title="¿Eliminar este proyecto?"

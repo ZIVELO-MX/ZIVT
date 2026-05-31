@@ -2,6 +2,7 @@ import { createClient as createSupabaseClient } from './client'
 import {
   clientRowToClient,
   clientToClientRow,
+  learningTaskRowToLearningTask,
   notificationRowToNotification,
   profileRowToProfile,
   profileToProfileRow,
@@ -10,7 +11,7 @@ import {
   taskRowToTask,
   taskToTaskRow,
 } from './types'
-import type { Client, Notification, Profile, Project, Task } from './types'
+import type { Client, LearningTask, Notification, Profile, Project, Task } from './types'
 
 export async function getProjects(): Promise<Project[]> {
   const supabase = createSupabaseClient()
@@ -213,4 +214,16 @@ export async function markAllNotificationsRead(): Promise<void> {
     .eq('user_id', user.user.id)
     .eq('unread', true)
   if (error) throw error
+}
+
+// ─── Learning Tasks ──────────────────────────────────────────────────────────
+
+export async function getLearningTasks(): Promise<LearningTask[]> {
+  const supabase = createSupabaseClient()
+  const { data, error } = await supabase
+    .from('learning_tasks')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(learningTaskRowToLearningTask)
 }
