@@ -53,7 +53,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
   useEffect(() => { setMobile(window.innerWidth < 768) }, [])
   const collapsed = mobile ? false : collapsedProp
   const role = useRole()
-  const hideClients = role === 'editor' || role === 'viewer'
+  const hideClients = !role || role === 'editor' || role === 'viewer'
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: <Ic.Dashboard width="18" height="18" /> },
     { id: 'kanban', label: 'Pendientes', icon: <Ic.Kanban width="18" height="18" />, badge: counts.tasks },

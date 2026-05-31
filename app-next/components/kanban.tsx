@@ -345,7 +345,7 @@ function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete
       }>
       <div className="px-6 py-5 space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <span className="size-2 rounded-full" style={{background: project?.accent}}/>
+          <span className="size-2 rounded-full" style={{background: project?.accent || '#1D1D1B'}}/>
           <span className="text-[12px] font-semibold text-muted">{project?.name}</span>
           <Tag tag={task.tag} />
         </div>

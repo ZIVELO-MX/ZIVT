@@ -67,7 +67,7 @@ function AccountSection({ toast }: { toast: (msg: string) => void }) {
           <div>
             <div className="font-bold text-[16px]">{user.name}</div>
             <div className="text-[13px] text-muted">{user.email}</div>
-            <div className="text-[12px] text-muted mt-0.5">{user.role} · Admin</div>
+            <div className="text-[12px] text-muted mt-0.5">{user.role} · {user.permission}</div>
           </div>
         </div>
         <SettingRow label="Nombre completo" description="Visible para todos los miembros del workspace">

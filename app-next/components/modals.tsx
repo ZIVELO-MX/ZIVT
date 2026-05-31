@@ -218,6 +218,7 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
   }, [open, onClose, anchorRef])
 
   if (!open) return null
+  if (!user) return null
   return (
     <div ref={popRef} className="absolute right-8 top-[68px] z-40 w-[300px] bg-white rounded-lg border border-line2 shadow-pop pop-in overflow-hidden">
       <div className="p-4 border-b border-line2 flex items-center gap-3">
@@ -227,6 +228,7 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
           <div className="text-[12px] text-muted truncate">{user.email || 'raul@zivelo.dev'}</div>
         </div>
       </div>
+      
       <div className="p-2">
         {[
           { ic: <Ic.Users width="15" height="15" />, l: 'Mi perfil', k: '⌘P', onClick: () => { onClose(); onNavigate?.('profile'); } },
