@@ -146,6 +146,7 @@ export function ProjectDetailDrawer({ open, project, clients, onClose, onEdit, p
       footer={
         <div className="flex justify-between gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>Cerrar</Button>
+          {onEdit && <Button variant="primary" size="sm" onClick={() => { onClose(); onEdit(project) }}><Ic.Edit width="14" height="14"/> Editar proyecto</Button>}
         </div>
       }>
 

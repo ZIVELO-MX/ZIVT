@@ -14,12 +14,13 @@ import Users from '@/components/users';
 import ProfileView from '@/components/profile';
 import Learning from '@/components/learning';
 
+const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile'];
+
 export default function HomePage() {
   const [view, setView] = useState('dashboard');
   useEffect(() => {
     const saved = (() => { try { return localStorage.getItem('zivelo-view'); } catch { return null; } })();
-    const valid = ['dashboard','kanban','projects','clients','learning','users','settings','profile'];
-    if (saved && valid.includes(saved)) setView(saved);
+    if (saved && VALID_VIEWS.includes(saved)) setView(saved);
   }, []);
   useEffect(() => {
     try { localStorage.setItem('zivelo-view', view); } catch {}
@@ -130,7 +131,7 @@ export default function HomePage() {
           user={profiles[0] ?? null}
           dark={dark}
           onToggleDark={() => setDark(d => !d)}
-          onNavigate={(v: string) => setView(v)}
+          onNavigate={(v: string) => { if (VALID_VIEWS.includes(v)) setView(v) }}
           onOpenNotifs={() => setNotifsOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onOpenPrefs={() => setPrefsOpen(true)}
@@ -165,7 +166,7 @@ export default function HomePage() {
         </div>
       </main>
 
-      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onNavigate={(v: string) => setView(v)}
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onNavigate={(v: string) => { if (VALID_VIEWS.includes(v)) setView(v) }}
         projects={projects} clients={clients} tasks={tasks}/>
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} onSave={(user) => setProfiles(prev => [...prev, user])} />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)}/>
