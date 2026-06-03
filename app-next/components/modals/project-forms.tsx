@@ -6,6 +6,138 @@ import { Avatar, Modal, Button, Input, Select } from '@/components/ui'
 import { TAG_STYLES, TASK_TEMPLATES } from '@/lib/constants'
 import { CustomDatePicker } from '@/components/controls'
 
+export function EditProjectModal({ open, onClose, onSave, project, clients, profiles = [] }: any) {
+  if (!open || !project) return null
+  return <EditProjectForm key={project.id} project={project} onClose={onClose} onSave={onSave} clients={clients} profiles={profiles} />
+}
+
+function EditProjectForm({ project, onClose, onSave, clients, profiles = [] }: any) {
+  const [form, setForm] = useState({
+    name:        project.name        ?? '',
+    description: project.description ?? '',
+    kind:        project.kind        ?? 'Web development',
+    client:      project.client      ?? '',
+    status:      project.status      ?? 'todo',
+    health:      project.health      ?? 'on_track',
+    start:       project.start       ?? new Date().toISOString().slice(0, 10),
+    due:         project.due         ?? '',
+    budget:      project.budget      ?? 0,
+    team:        project.team        ?? [],
+    accent:      project.accent      ?? '#D72228',
+  })
+
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
+
+  function toggleMember(id: string) {
+    set('team', form.team.includes(id) ? form.team.filter((x: string) => x !== id) : [...form.team, id])
+  }
+
+  function submit() {
+    if (!form.name.trim()) return
+    onSave({
+      ...project,
+      name:        form.name.trim(),
+      description: form.description.trim(),
+      kind:        form.kind,
+      client:      form.client || null,
+      status:      form.status,
+      health:      form.health,
+      start:       form.start,
+      due:         form.due || form.start,
+      budget:      Number(form.budget) || 0,
+      team:        form.team,
+      accent:      form.accent,
+    })
+    onClose()
+  }
+
+  return (
+    <Modal open={true} onClose={onClose} title="Editar proyecto" width={600}
+      footer={<>
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button variant="primary" onClick={submit} disabled={!form.name.trim()}>
+          <Ic.Check width="14" height="14" /> Guardar cambios
+        </Button>
+      </>}>
+      <div className="space-y-5">
+
+        <Input label="Nombre del proyecto" value={form.name} onChange={(e) => set('name', e.target.value)} autoFocus />
+
+        <div>
+          <label className="block text-[12px] font-semibold text-carbon mb-1.5 uppercase tracking-wider">
+            Descripción <span className="text-muted font-normal normal-case tracking-normal">(opcional)</span>
+          </label>
+          <textarea
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Contexto, objetivos, tecnologías..."
+            className="w-full rounded-md border border-line2 px-3 py-2.5 text-[13.5px] leading-relaxed resize-none outline-none focus:border-zred/50 focus:ring-2 focus:ring-zred/10 placeholder:text-muted transition-all"
+            style={{ height: '72px' }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Tipo" value={form.kind} onChange={(e) => set('kind', e.target.value)}
+            options={['Web development', 'Point of sale', 'Restaurant solutions', 'Web app', 'Producto interno', 'Consultoría', 'Otro'].map(v => ({ value: v, label: v }))} />
+          <Select label="Cliente (opcional)" value={form.client} onChange={(e) => set('client', e.target.value)}
+            options={[{ value: '', label: '— Proyecto interno —' }, ...clients.map((c: any) => ({ value: c.id, label: c.name }))]} />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <CustomDatePicker label="Inicio" value={form.start} onChange={(e) => set('start', e.target.value)} />
+          <CustomDatePicker label="Entrega" value={form.due} onChange={(e) => set('due', e.target.value)} />
+          <Input label="Presupuesto (MXN)" type="number" placeholder="0" value={form.budget} onChange={(e) => set('budget', e.target.value)} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Select label="Estado" value={form.status} onChange={(e) => set('status', e.target.value)}
+            options={[
+              { value: 'todo',        label: 'Por iniciar' },
+              { value: 'in_progress', label: 'En progreso' },
+              { value: 'review',      label: 'En revisión' },
+              { value: 'done',        label: 'Terminado' },
+            ]} />
+          <Select label="Salud del proyecto" value={form.health} onChange={(e) => set('health', e.target.value)}
+            options={[
+              { value: 'on_track', label: 'En tiempo' },
+              { value: 'at_risk',  label: 'En riesgo' },
+              { value: 'off_track', label: 'Atrasado' },
+            ]} />
+        </div>
+
+        <div>
+          <div className="text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Equipo asignado</div>
+          <div className="flex flex-wrap gap-2">
+            {profiles.map((u: any) => {
+              const on = form.team.includes(u.id)
+              return (
+                <button key={u.id} type="button" onClick={() => toggleMember(u.id)}
+                  className={`flex items-center gap-2 pl-1 pr-3 h-9 rounded-full border transition-all ${on ? 'bg-carbon text-white border-carbon' : 'bg-white text-carbon border-line hover:border-zred/40'}`}>
+                  <Avatar user={u} size={26} />
+                  <span className="text-[12.5px] font-semibold">{u.name.split(' ')[0]}</span>
+                  {on && <Ic.Check width="13" height="13" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[12px] font-semibold text-carbon mb-2 uppercase tracking-wider">Color de acento</div>
+          <div className="flex gap-2">
+            {PROJECT_ACCENTS.map(c => (
+              <button key={c} type="button" onClick={() => set('accent', c)} aria-label={`Color ${c}`}
+                className={`size-8 rounded-md transition-transform ${form.accent === c ? 'ring-2 ring-offset-2 ring-carbon scale-110' : 'hover:scale-105'}`}
+                style={{ background: c }} />
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </Modal>
+  )
+}
+
 const PROJECT_ACCENTS = ['#D72228', '#1D1D1B', '#2F4858', '#6B6B6B', '#B91C22', '#7A5A12', '#1E6B3C', '#3A47B5']
 const EMPTY_TEAMS: any[] = []
 

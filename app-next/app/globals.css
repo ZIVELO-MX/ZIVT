@@ -32,6 +32,8 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+* { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { display: none; }
 html, body { background: #FAFAF9; color: #1D1D1B; transition: background 220ms ease, color 220ms ease; }
 body { font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 .nums { font-feature-settings: 'tnum' 1, 'cv11' 1; }

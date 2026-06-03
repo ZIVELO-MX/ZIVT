@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Ic } from '@/components/icons'
 import { Card, Badge, Button, ProgressBar, Avatar, AvatarStack } from './ui'
 import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
-import { ConfirmDialog, NewProjectModal, ProjectDetailDrawer } from './modals'
-import { createProject, createTask, deleteProject } from '@/lib/supabase/queries'
+import { ConfirmDialog, NewProjectModal, EditProjectModal, ProjectDetailDrawer } from './modals'
+import { createProject, createTask, deleteProject, updateProject } from '@/lib/supabase/queries'
+import { useRole } from '@/lib/supabase/useRole'
 
 function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon, profiles = [] }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -36,7 +37,7 @@ function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, on
 
   return (
     <Card hover className="p-5 relative cursor-pointer" onClick={() => onOpen(project)}>
-      <span className="absolute left-0 top-0 bottom-0 w-1" style={{background: project.accent}}/>
+      <span className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg" style={{background: project.accent}}/>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
@@ -107,9 +108,11 @@ function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, on
 
 export default function Projects({ projects, setProjects, clients, tasks, setTasks, teams, setTeams, profiles = [] }: any) {
   const router = useRouter();
+  const role = useRole();
+  const canEdit = role === 'founder' || role === 'admin';
   const [page, setPage] = useReducer(
     (prev: any, next: any) => ({ ...prev, ...next }),
-    { filter: 'all', search: '', view: 'grid', newOpen: false, openDetail: null, confirmDel: null, toast: '' }
+    { filter: 'all', search: '', view: 'grid', newOpen: false, openDetail: null, editProject: null, confirmDel: null, toast: '' }
   );
   const toastRef = useRef(null);
 
@@ -370,7 +373,19 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
           }
         }}
       />
-      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} tasks={tasks} onClose={() => setPage({ openDetail: null })}/>
+      <ProjectDetailDrawer open={!!page.openDetail} project={page.openDetail} clients={clients} profiles={profiles} tasks={tasks} onClose={() => setPage({ openDetail: null })}
+        onEdit={canEdit ? (p) => setPage({ openDetail: null, editProject: p }) : undefined}/>
+      <EditProjectModal open={!!page.editProject} project={page.editProject} clients={clients} profiles={profiles}
+        onClose={() => setPage({ editProject: null })}
+        onSave={async (updated) => {
+          try {
+            const saved = await updateProject(updated.id, updated)
+            setProjects(prev => prev.map(p => p.id === saved.id ? saved : p))
+          } catch {
+            setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))
+          }
+          setPage({ editProject: null })
+        }}/>
       <ConfirmDialog
         open={!!page.confirmDel}
         title="¿Eliminar este proyecto?"
