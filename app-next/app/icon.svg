@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 162.54 118.54">
+  <defs>
+    <style>
+      .cls-1 { fill: url(#g3); }
+      .cls-2 { fill: url(#g4); }
+      .cls-3 { fill: #1D1D1B; }
+      .cls-4 { fill: #1D1D1B; }
+      .cls-5 { fill: url(#g1); }
+      .cls-6 { fill: url(#g5); }
+      .cls-7 { fill: url(#g2); }
+    </style>
+    <linearGradient id="g1" x1="19.06" y1="67.84" x2="52.45" y2="67.84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d72228"/>
+      <stop offset="1" stop-color="#d72228" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="115.21" x2="33.39" y2="115.21" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d72228"/>
+      <stop offset="1" stop-color="#d72228" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="5.55" y1="91.53" x2="38.94" y2="91.53" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d72228"/>
+      <stop offset="1" stop-color="#d72228" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="14.41" y1="103.37" x2="33.39" y2="103.37" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d72228"/>
+      <stop offset="1" stop-color="#d72228" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g5" x1="27.2" y1="79.68" x2="46.18" y2="79.68" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#d72228"/>
+      <stop offset="1" stop-color="#d72228" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect class="cls-5" x="19.06" y="64.52" width="33.39" height="6.65" rx="3.33" ry="3.33"/>
+  <rect class="cls-7" x="0" y="111.88" width="33.39" height="6.65" rx="3.33" ry="3.33"/>
+  <rect class="cls-1" x="5.55" y="88.2" width="33.39" height="6.65" rx="3.33" ry="3.33"/>
+  <rect class="cls-2" x="14.41" y="100.04" width="18.98" height="6.65" rx="3.33" ry="3.33"/>
+  <rect class="cls-6" x="27.2" y="76.36" width="18.98" height="6.65" rx="3.33" ry="3.33"/>
+  <path class="cls-3" d="M25.79,100.65l40.62-53.14v-.51H27.58v-21.08h71.91v18.65l-39.98,52.37v.51h41.9v21.08H25.79v-17.88Z"/>
+  <path class="cls-4" d="M74.65,0h26.18v19.67h-26.18V0Z"/>
+  <path class="cls-3" d="M73.26,25.93h27.59l14.94,56.2c.89,3.19,1.66,7.66,2.55,10.86h.51l2.43-10.86,14.18-56.2h27.08l-28.1,92.6h-33.34l-27.85-92.6Z"/>
+</svg>
