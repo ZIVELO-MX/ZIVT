@@ -72,7 +72,7 @@ export async function getTasks(): Promise<Task[]> {
 
 export async function createTask(data: Partial<Task>): Promise<Task> {
   const supabase = createSupabaseClient()
-  const row = taskToTaskRow({ id: crypto.randomUUID(), ...data })
+  const row = taskToTaskRow({ ...data, id: crypto.randomUUID() })
   const { data: inserted, error } = await supabase
     .from('tasks')
     .insert(row)
@@ -126,7 +126,7 @@ export async function getClients(): Promise<Client[]> {
 
 export async function createClient(data: Partial<Client>): Promise<Client> {
   const supabase = createSupabaseClient()
-  const row = clientToClientRow({ id: crypto.randomUUID(), ...data })
+  const row = clientToClientRow({ ...data, id: crypto.randomUUID() })
   const { data: inserted, error } = await supabase
     .from('clients')
     .insert(row)
@@ -231,7 +231,7 @@ export async function getLearningTasks(): Promise<LearningTask[]> {
 
 export async function createLearningTask(data: Partial<LearningTask>): Promise<LearningTask> {
   const supabase = createSupabaseClient()
-  const row = learningTaskToLearningTaskRow({ id: crypto.randomUUID(), ...data })
+  const row = learningTaskToLearningTaskRow({ ...data, id: crypto.randomUUID() })
   const { data: inserted, error } = await supabase
     .from('learning_tasks')
     .insert(row)

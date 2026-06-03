@@ -518,10 +518,9 @@ function NewTaskModal({ open, defaultCol, projects, profiles = [], onClose, onCr
   function submit() {
     if (!form.title.trim()) return;
     onCreate({
-      id: 't' + Date.now(),
-      col: form.col, project: form.project, title: form.title.trim(),
+      col: form.col, project: form.project || null, title: form.title.trim(),
       tag: form.tag, priority: form.priority, due: form.due || null,
-      assignee: [],
+      assignee: form.assignee,
       subtasks: [], comments: 0, progress: {},
     });
     onClose();
