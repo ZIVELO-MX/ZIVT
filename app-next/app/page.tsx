@@ -16,6 +16,15 @@ import Learning from '@/components/learning';
 
 export default function HomePage() {
   const [view, setView] = useState('dashboard');
+  useEffect(() => {
+    const saved = (() => { try { return localStorage.getItem('zivelo-view'); } catch { return null; } })();
+    const valid = ['dashboard','kanban','projects','clients','learning','users','settings','profile'];
+    if (saved && valid.includes(saved)) setView(saved);
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('zivelo-view', view); } catch {}
+  }, [view]);
+
   const { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning } = useAppData();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
