@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { getClients, getLearningTasks, getNotifications, getProfiles, getProjects, getTasks, markNotificationRead, markAllNotificationsRead } from '@/lib/supabase/queries';
-import { createClient } from '@/lib/supabase/client';
-import type { Client, Notification, Profile, Task } from '@/lib/supabase/types';
+import { markNotificationRead, markAllNotificationsRead } from '@/lib/supabase/queries';
+import { useAppData } from '@/lib/supabase/useAppData';
 import { Sidebar, Topbar } from '@/components/sidebar';
 import { UserMenu, NotificationsDrawer, CommandPalette, InviteModal, KeyboardShortcutsModal, PreferencesDrawer } from '@/components/modals';
-import { Ic } from '@/components/icons';
 import { SettingsView } from '@/components/settings';
 import Dashboard from '@/components/dashboard';
 import Kanban from '@/components/kanban';
@@ -18,48 +16,7 @@ import Learning from '@/components/learning';
 
 export default function HomePage() {
   const [view, setView] = useState('dashboard');
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [learning, setLearning] = useState<any[]>([]);
-
-  // Fetch + realtime subscription for all DB tables
-  useEffect(() => {
-    getProjects().then(setProjects);
-    getTasks().then(setTasks);
-    getClients().then(setClients);
-    getProfiles().then(setProfiles);
-    getNotifications().then(setNotifications);
-    getLearningTasks().then(setLearning);
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
-        getProjects().then(setProjects);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-        getTasks().then(setTasks);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
-        getClients().then(setClients);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        getProfiles().then(setProfiles);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
-        getNotifications().then(setNotifications);
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'learning_tasks' }, () => {
-        getLearningTasks().then(setLearning);
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  const { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning } = useAppData();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -102,6 +59,7 @@ export default function HomePage() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const notifBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -153,6 +111,7 @@ export default function HomePage() {
           onOpenNotifs={() => setNotifsOpen(true)}
           onOpenUserMenu={() => setUserMenuOpen(v => !v)}
           userMenuRef={userMenuRef}
+          notifBtnRef={notifBtnRef}
           onOpenMenu={() => setMobileMenuOpen(true)}
         />
         <UserMenu
@@ -166,6 +125,21 @@ export default function HomePage() {
           onOpenNotifs={() => setNotifsOpen(true)}
           onOpenShortcuts={() => setShortcutsOpen(true)}
           onOpenPrefs={() => setPrefsOpen(true)}
+        />
+        <NotificationsDrawer
+          open={notifsOpen}
+          onClose={() => setNotifsOpen(false)}
+          notifications={notifications}
+          profiles={profiles}
+          anchorRef={notifBtnRef}
+          onMarkRead={(id: string) => {
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
+            markNotificationRead(id).catch(e => console.error('markNotificationRead failed:', e));
+          }}
+          onMarkAllRead={() => {
+            setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+            markAllNotificationsRead().catch(e => console.error('markAllNotificationsRead failed:', e));
+          }}
         />
 
         <div data-screen-label={view}>
@@ -184,20 +158,6 @@ export default function HomePage() {
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onNavigate={(v: string) => setView(v)}
         projects={projects} clients={clients} tasks={tasks}/>
-      <NotificationsDrawer
-        open={notifsOpen}
-        onClose={() => setNotifsOpen(false)}
-        notifications={notifications}
-        profiles={profiles}
-        onMarkRead={(id) => {
-          setNotifications(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
-          markNotificationRead(id).catch(e => console.error('markNotificationRead failed:', e));
-        }}
-        onMarkAllRead={() => {
-          setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
-          markAllNotificationsRead().catch(e => console.error('markAllNotificationsRead failed:', e));
-        }}
-      />
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} onSave={(user) => setProfiles(prev => [...prev, user])} />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)}/>
       <PreferencesDrawer open={prefsOpen} onClose={() => setPrefsOpen(false)} dark={dark} onToggleDark={() => setDark(d => !d)}/>
