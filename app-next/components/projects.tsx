@@ -138,6 +138,7 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
   }
   async function duplicateProject(project) {
     const newProject = {
+      id: crypto.randomUUID(),
       name: `${project.name} + copia`,
       client: project.client,
       kind: project.kind,

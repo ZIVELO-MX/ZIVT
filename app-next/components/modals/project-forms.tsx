@@ -42,10 +42,10 @@ function NewProjectForm({ onClose, onCreate, clients, presetClient, teams, setTe
 
   function submit() {
     if (!form.name.trim()) return
-    const pid = 'p' + Date.now()
+    const pid = crypto.randomUUID()
     const templateTasks = useTemplate && template.length > 0
-      ? template.map((t, i) => ({
-          id: 'tt' + Date.now() + i,
+      ? template.map((t) => ({
+          id: crypto.randomUUID(),
           col: 'todo',
           project: pid,
           title: t.title,
