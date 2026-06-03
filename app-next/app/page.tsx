@@ -147,7 +147,7 @@ export default function HomePage() {
           {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles}/>}
           {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles}/>}
           {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles}/>}
-          {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects}/>}
+          {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} setTasks={setTasks}/>}
           {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles}/>}
           {view === 'settings' && (
             <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} profiles={profiles} />

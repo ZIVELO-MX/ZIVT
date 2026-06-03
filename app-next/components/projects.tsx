@@ -6,7 +6,7 @@ import { Ic } from '@/components/icons'
 import { Card, Badge, Button, ProgressBar, Avatar, AvatarStack } from './ui'
 import { STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { ConfirmDialog, NewProjectModal, ProjectDetailDrawer } from './modals'
-import { createProject, deleteProject } from '@/lib/supabase/queries'
+import { createProject, createTask, deleteProject } from '@/lib/supabase/queries'
 
 function ProjectMetricCard({ project, clients, onOpen, onDuplicate, onDelete, onSoon, profiles = [] }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -358,7 +358,11 @@ export default function Projects({ projects, setProjects, clients, tasks, setTas
           try {
             const created = await createProject({ ...p, tasksTotal: templateTasks?.length ?? 0 })
             setProjects(prev => [created, ...prev])
-            if (templateTasks?.length) setTasks(prev => [...templateTasks, ...prev])
+            if (templateTasks?.length) {
+              const results = await Promise.allSettled(templateTasks.map(t => createTask(t)))
+              const saved = results.flatMap(r => r.status === 'fulfilled' ? [r.value] : [])
+              setTasks(prev => [...saved, ...prev])
+            }
             router.refresh()
           } catch {
             setProjects(prev => [{ ...p, tasksTotal: templateTasks?.length ?? 0 }, ...prev])
