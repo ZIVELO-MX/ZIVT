@@ -6,7 +6,7 @@ import { Ic } from '@/components/icons'
 import { Input, Select, Button, Card, Badge, AvatarStack, Drawer, Modal, Avatar } from './ui'
 import { ConfirmDialog, NewProjectModal } from './modals'
 import { STATUS_LABEL, TAG_STYLES, formatDate, formatMoney, daysUntil } from '@/lib/constants'
-import { createClient, createProject, updateClient, deleteClient } from '@/lib/supabase/queries'
+import { createClient, createProject, createTask, updateClient, deleteClient } from '@/lib/supabase/queries'
 import { useRole } from '@/lib/supabase/useRole'
 import { exportToCSV } from '@/lib/utils'
 
@@ -213,7 +213,7 @@ function ClientFormModal({ open, mode, initial, onClose, onSave }: any) {
   )
 }
 
-export default function Clients({ clients, setClients, projects, setProjects }) {
+export default function Clients({ clients, setClients, projects, setProjects, setTasks }) {
   const router = useRouter()
   const role = useRole()
   const [page, setPage] = useReducer(
@@ -412,12 +412,18 @@ export default function Clients({ clients, setClients, projects, setProjects }) 
       />
       <NewProjectModal open={!!page.newProjectClient} clients={clients} presetClient={page.newProjectClient}
         onClose={() => setPage({ newProjectClient: null })}
-        onCreate={async (p) => {
+        onCreate={async (p, templateTasks) => {
           try {
-            const created = await createProject(p)
+            const created = await createProject({ ...p, tasksTotal: templateTasks?.length ?? 0 })
             setProjects(prev => [created, ...prev])
+            if (templateTasks?.length) {
+              const results = await Promise.allSettled(templateTasks.map(t => createTask(t)))
+              const saved = results.flatMap(r => r.status === 'fulfilled' ? [r.value] : [])
+              setTasks?.(prev => [...saved, ...prev])
+            }
           } catch {
-            setProjects(prev => [p, ...prev])
+            setProjects(prev => [{ ...p, tasksTotal: templateTasks?.length ?? 0 }, ...prev])
+            if (templateTasks?.length) setTasks?.(prev => [...templateTasks, ...prev])
           }
           setPage({ newProjectClient: null })
         }} />

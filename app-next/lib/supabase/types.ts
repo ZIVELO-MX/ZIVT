@@ -1,311 +1,32 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+// Domain types and mapper functions for the application layer.
+// Raw DB schema lives in schema.ts — only import from there, never duplicate it here.
 
-export type ProfilePermission = 'founder' | 'admin' | 'editor' | 'viewer'
-export type ProfileStatus = 'active' | 'invited' | 'suspended'
-export type ProjectStatus = 'todo' | 'in_progress' | 'review' | 'done'
-export type ProjectHealth = 'on_track' | 'at_risk'
-export type TaskColumn = 'todo' | 'progress' | 'review' | 'done' | 'blocked'
-export type TaskPriority = 'low' | 'med' | 'high'
-export type ClientStatus = 'active' | 'lead' | 'paused'
-export type LearningColumn = 'todo' | 'progress' | 'done'
-export type LearningResourceType = 'article' | 'video' | 'course' | 'book'
+export type {
+  Database,
+  Json,
+  ProfilePermission,
+  ProfileStatus,
+  ProjectStatus,
+  ProjectHealth,
+  TaskColumn,
+  TaskPriority,
+  ClientStatus,
+  LearningColumn,
+  LearningResourceType,
+} from './schema'
 
-export type Database = {
-  public: {
-    Tables: {
-      profiles: {
-        Row: {
-          id: string
-          name: string
-          initials: string | null
-          color: string | null
-          role: string | null
-          phone: string | null
-          permission: ProfilePermission | null
-          status: ProfileStatus | null
-          joined_at: string | null
-          last_active: string | null
-        }
-        Insert: {
-          id: string
-          name: string
-          initials?: string | null
-          color?: string | null
-          role?: string | null
-          phone?: string | null
-          permission?: ProfilePermission | null
-          status?: ProfileStatus | null
-          joined_at?: string | null
-          last_active?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          initials?: string | null
-          color?: string | null
-          role?: string | null
-          phone?: string | null
-          permission?: ProfilePermission | null
-          status?: ProfileStatus | null
-          joined_at?: string | null
-          last_active?: string | null
-        }
-        Relationships: []
-      }
-      projects: {
-        Row: {
-          id: string
-          name: string
-          client: string | null
-          kind: string | null
-          status: ProjectStatus | null
-          health: ProjectHealth | null
-          progress: number | null
-          tasks_done: number | null
-          tasks_total: number | null
-          budget: number | null
-          spent: number | null
-          start_date: string | null
-          due_date: string | null
-          accent: string | null
-          team: string[] | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id: string
-          name: string
-          client?: string | null
-          kind?: string | null
-          status?: ProjectStatus | null
-          health?: ProjectHealth | null
-          progress?: number | null
-          tasks_done?: number | null
-          tasks_total?: number | null
-          budget?: number | null
-          spent?: number | null
-          start_date?: string | null
-          due_date?: string | null
-          accent?: string | null
-          team?: string[] | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          client?: string | null
-          kind?: string | null
-          status?: ProjectStatus | null
-          health?: ProjectHealth | null
-          progress?: number | null
-          tasks_done?: number | null
-          tasks_total?: number | null
-          budget?: number | null
-          spent?: number | null
-          start_date?: string | null
-          due_date?: string | null
-          accent?: string | null
-          team?: string[] | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      tasks: {
-        Row: {
-          id: string
-          col: TaskColumn
-          project: string | null
-          title: string
-          tag: string | null
-          priority: TaskPriority | null
-          due: string | null
-          assignee: string[] | null
-          subtasks: Json | null
-          comments: number | null
-          progress: Json | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id: string
-          col?: TaskColumn
-          project?: string | null
-          title: string
-          tag?: string | null
-          priority?: TaskPriority | null
-          due?: string | null
-          assignee?: string[] | null
-          subtasks?: Json | null
-          comments?: number | null
-          progress?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          col?: TaskColumn
-          project?: string | null
-          title?: string
-          tag?: string | null
-          priority?: TaskPriority | null
-          due?: string | null
-          assignee?: string[] | null
-          subtasks?: Json | null
-          comments?: number | null
-          progress?: Json | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      clients: {
-        Row: {
-          id: string
-          name: string
-          industry: string | null
-          contact: string | null
-          email: string | null
-          phone: string | null
-          city: string | null
-          status: ClientStatus | null
-          mrr: number | null
-          since: string | null
-          projects: number | null
-          notes: string | null
-          created_at: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          id: string
-          name: string
-          industry?: string | null
-          contact?: string | null
-          email?: string | null
-          phone?: string | null
-          city?: string | null
-          status?: ClientStatus | null
-          mrr?: number | null
-          since?: string | null
-          projects?: number | null
-          notes?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          industry?: string | null
-          contact?: string | null
-          email?: string | null
-          phone?: string | null
-          city?: string | null
-          status?: ClientStatus | null
-          mrr?: number | null
-          since?: string | null
-          projects?: number | null
-          notes?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      notifications: {
-        Row: {
-          id: string
-          user_id: string | null
-          type: string
-          title: string
-          body: string | null
-          unread: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id?: string | null
-          type: string
-          title: string
-          body?: string | null
-          unread?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string | null
-          type?: string
-          title?: string
-          body?: string | null
-          unread?: boolean | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-      learning_tasks: {
-        Row: {
-          id: string
-          col: LearningColumn | null
-          title: string
-          description: string | null
-          url: string | null
-          type: LearningResourceType | null
-          assignee: string[] | null
-          due: string | null
-          duration: string | null
-          tags: string[] | null
-          progress: Json | null
-          created_at: string | null
-        }
-        Insert: {
-          id: string
-          col?: LearningColumn | null
-          title: string
-          description?: string | null
-          url?: string | null
-          type?: LearningResourceType | null
-          assignee?: string[] | null
-          due?: string | null
-          duration?: string | null
-          tags?: string[] | null
-          progress?: Json | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          col?: LearningColumn | null
-          title?: string
-          description?: string | null
-          url?: string | null
-          type?: LearningResourceType | null
-          assignee?: string[] | null
-          due?: string | null
-          duration?: string | null
-          tags?: string[] | null
-          progress?: Json | null
-          created_at?: string | null
-        }
-        Relationships: []
-      }
-    }
-    Views: Record<string, never>
-    Functions: Record<string, never>
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
-  }
-}
+import type { Database, Json, ProfilePermission, ProfileStatus, ProjectStatus, ProjectHealth, TaskPriority, TaskColumn, ClientStatus, LearningColumn, LearningResourceType } from './schema'
 
-export type ProfileRow = Database['public']['Tables']['profiles']['Row']
-export type ProjectRow = Database['public']['Tables']['projects']['Row']
-export type TaskRow = Database['public']['Tables']['tasks']['Row']
-export type ClientRow = Database['public']['Tables']['clients']['Row']
+// ─── Row aliases (raw DB rows) ────────────────────────────────────────────────
+
+export type ProfileRow      = Database['public']['Tables']['profiles']['Row']
+export type ProjectRow      = Database['public']['Tables']['projects']['Row']
+export type TaskRow         = Database['public']['Tables']['tasks']['Row']
+export type ClientRow       = Database['public']['Tables']['clients']['Row']
 export type NotificationRow = Database['public']['Tables']['notifications']['Row']
 export type LearningTaskRow = Database['public']['Tables']['learning_tasks']['Row']
+
+// ─── Domain types ─────────────────────────────────────────────────────────────
 
 export type Profile = {
   id: string
@@ -387,18 +108,6 @@ export type Notification = {
   createdAt: string
 }
 
-export function notificationRowToNotification(row: NotificationRow): Notification {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    type: row.type,
-    title: row.title,
-    body: row.body,
-    unread: row.unread ?? true,
-    createdAt: row.created_at ?? new Date().toISOString(),
-  }
-}
-
 export type LearningTask = {
   id: string
   col: LearningColumn
@@ -412,6 +121,38 @@ export type LearningTask = {
   tags: string[]
   progress: Record<string, MemberProgress>
   createdAt?: string | null
+}
+
+// ─── Mapper functions (DB row → domain type) ──────────────────────────────────
+
+export function profileRowToProfile(row: ProfileRow): Profile {
+  return {
+    id: row.id,
+    name: row.name,
+    initials: row.initials ?? row.name.slice(0, 2).toUpperCase(),
+    color: row.color ?? '#D72228',
+    role: row.role ?? '',
+    phone: row.phone,
+    status: row.status ?? 'active',
+    permission: row.permission ?? 'viewer',
+    joined: row.joined_at ?? '',
+    lastActive: row.last_active ?? '',
+  }
+}
+
+export function profileToProfileRow(profile: Partial<Profile>): Partial<ProfileRow> {
+  const row: Partial<ProfileRow> = {}
+  if (profile.id !== undefined)         row.id = profile.id
+  if (profile.name !== undefined)       row.name = profile.name
+  if (profile.initials !== undefined)   row.initials = profile.initials
+  if (profile.color !== undefined)      row.color = profile.color
+  if (profile.role !== undefined)       row.role = profile.role
+  if (profile.phone !== undefined)      row.phone = profile.phone
+  if (profile.status !== undefined)     row.status = profile.status
+  if (profile.permission !== undefined) row.permission = profile.permission
+  if (profile.joined !== undefined)     row.joined_at = profile.joined
+  if (profile.lastActive !== undefined) row.last_active = profile.lastActive
+  return row
 }
 
 export function projectRowToProject(row: ProjectRow): Project {
@@ -436,33 +177,25 @@ export function projectRowToProject(row: ProjectRow): Project {
   }
 }
 
-export function profileRowToProfile(row: ProfileRow): Profile {
-  return {
-    id: row.id,
-    name: row.name,
-    initials: row.initials ?? row.name.slice(0, 2).toUpperCase(),
-    color: row.color ?? '#D72228',
-    role: row.role ?? '',
-    phone: row.phone,
-    status: row.status ?? 'active',
-    permission: row.permission ?? 'viewer',
-    joined: row.joined_at ?? '',
-    lastActive: row.last_active ?? '',
-  }
-}
-
-export function profileToProfileRow(profile: Partial<Profile>): Partial<ProfileRow> {
-  const row: Partial<ProfileRow> = {}
-  if (profile.id !== undefined) row.id = profile.id
-  if (profile.name !== undefined) row.name = profile.name
-  if (profile.initials !== undefined) row.initials = profile.initials
-  if (profile.color !== undefined) row.color = profile.color
-  if (profile.role !== undefined) row.role = profile.role
-  if (profile.phone !== undefined) row.phone = profile.phone
-  if (profile.status !== undefined) row.status = profile.status
-  if (profile.permission !== undefined) row.permission = profile.permission
-  if (profile.joined !== undefined) row.joined_at = profile.joined
-  if (profile.lastActive !== undefined) row.last_active = profile.lastActive
+export function projectToProjectRow(project: Partial<Project>): Partial<ProjectRow> {
+  const row: Partial<ProjectRow> = {}
+  if (project.id !== undefined)         row.id = project.id
+  if (project.name !== undefined)       row.name = project.name
+  if (project.client !== undefined)     row.client = project.client
+  if (project.kind !== undefined)       row.kind = project.kind
+  if (project.status !== undefined)     row.status = project.status
+  if (project.progress !== undefined)   row.progress = project.progress
+  if (project.start !== undefined)      row.start_date = project.start
+  if (project.due !== undefined)        row.due_date = project.due
+  if (project.team !== undefined)       row.team = project.team
+  if (project.health !== undefined)     row.health = project.health
+  if (project.budget !== undefined)     row.budget = project.budget
+  if (project.spent !== undefined)      row.spent = project.spent
+  if (project.tasksDone !== undefined)  row.tasks_done = project.tasksDone
+  if (project.tasksTotal !== undefined) row.tasks_total = project.tasksTotal
+  if (project.accent !== undefined)     row.accent = project.accent
+  if (project.createdAt !== undefined)  row.created_at = project.createdAt
+  if (project.updatedAt !== undefined)  row.updated_at = project.updatedAt
   return row
 }
 
@@ -486,13 +219,13 @@ export function taskRowToTask(row: TaskRow): Task {
 
 export function taskToTaskRow(task: Partial<Task>): Partial<TaskRow> {
   const row: Partial<TaskRow> = {}
-  if (task.id !== undefined) row.id = task.id
-  if (task.col !== undefined) row.col = task.col as TaskColumn
-  if (task.project !== undefined) row.project = task.project
-  if (task.title !== undefined) row.title = task.title
-  if (task.tag !== undefined) row.tag = task.tag
+  if (task.id !== undefined)       row.id = task.id
+  if (task.col !== undefined)      row.col = task.col as TaskColumn
+  if (task.project !== undefined)  row.project = task.project
+  if (task.title !== undefined)    row.title = task.title
+  if (task.tag !== undefined)      row.tag = task.tag
   if (task.priority !== undefined) row.priority = task.priority
-  if (task.due !== undefined) row.due = task.due
+  if (task.due !== undefined)      row.due = task.due
   if (task.assignee !== undefined) row.assignee = task.assignee
   if (task.subtasks !== undefined) row.subtasks = task.subtasks as Json
   if (task.comments !== undefined) row.comments = task.comments
@@ -519,6 +252,37 @@ export function clientRowToClient(row: ClientRow): Client {
   }
 }
 
+export function clientToClientRow(client: Partial<Client>): Partial<ClientRow> {
+  const row: Partial<ClientRow> = {}
+  if (client.id !== undefined)        row.id = client.id
+  if (client.name !== undefined)      row.name = client.name
+  if (client.industry !== undefined)  row.industry = client.industry
+  if (client.contact !== undefined)   row.contact = client.contact
+  if (client.email !== undefined)     row.email = client.email
+  if (client.phone !== undefined)     row.phone = client.phone
+  if (client.city !== undefined)      row.city = client.city
+  if (client.since !== undefined)     row.since = client.since
+  if (client.status !== undefined)    row.status = client.status
+  if (client.projects !== undefined)  row.projects = client.projects
+  if (client.mrr !== undefined)       row.mrr = client.mrr
+  if (client.notes !== undefined)     row.notes = client.notes
+  if (client.createdAt !== undefined) row.created_at = client.createdAt
+  if (client.updatedAt !== undefined) row.updated_at = client.updatedAt
+  return row
+}
+
+export function notificationRowToNotification(row: NotificationRow): Notification {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    unread: row.unread ?? true,
+    createdAt: row.created_at ?? new Date().toISOString(),
+  }
+}
+
 export function learningTaskRowToLearningTask(row: LearningTaskRow): LearningTask {
   return {
     id: row.id,
@@ -538,61 +302,16 @@ export function learningTaskRowToLearningTask(row: LearningTaskRow): LearningTas
 
 export function learningTaskToLearningTaskRow(task: Partial<LearningTask>): Partial<LearningTaskRow> {
   const row: Partial<LearningTaskRow> = {}
-  if (task.id !== undefined) row.id = task.id
-  if (task.col !== undefined) row.col = task.col as LearningColumn
-  if (task.title !== undefined) row.title = task.title
+  if (task.id !== undefined)          row.id = task.id
+  if (task.col !== undefined)         row.col = task.col as LearningColumn
+  if (task.title !== undefined)       row.title = task.title
   if (task.description !== undefined) row.description = task.description
-  if (task.url !== undefined) row.url = task.url
-  if (task.type !== undefined) row.type = task.type as LearningResourceType
-  if (task.assignee !== undefined) row.assignee = task.assignee
-  if (task.due !== undefined) row.due = task.due
-  if (task.duration !== undefined) row.duration = task.duration
-  if (task.tags !== undefined) row.tags = task.tags
-  if (task.progress !== undefined) row.progress = task.progress as Json
-  return row
-}
-
-export function clientToClientRow(client: Partial<Client>): Partial<ClientRow> {
-  const row: Partial<ClientRow> = {}
-
-  if (client.id !== undefined) row.id = client.id
-  if (client.name !== undefined) row.name = client.name
-  if (client.industry !== undefined) row.industry = client.industry
-  if (client.contact !== undefined) row.contact = client.contact
-  if (client.email !== undefined) row.email = client.email
-  if (client.phone !== undefined) row.phone = client.phone
-  if (client.city !== undefined) row.city = client.city
-  if (client.since !== undefined) row.since = client.since
-  if (client.status !== undefined) row.status = client.status
-  if (client.projects !== undefined) row.projects = client.projects
-  if (client.mrr !== undefined) row.mrr = client.mrr
-  if (client.notes !== undefined) row.notes = client.notes
-  if (client.createdAt !== undefined) row.created_at = client.createdAt
-  if (client.updatedAt !== undefined) row.updated_at = client.updatedAt
-
-  return row
-}
-
-export function projectToProjectRow(project: Partial<Project>): Partial<ProjectRow> {
-  const row: Partial<ProjectRow> = {}
-
-  if (project.id !== undefined) row.id = project.id
-  if (project.name !== undefined) row.name = project.name
-  if (project.client !== undefined) row.client = project.client
-  if (project.kind !== undefined) row.kind = project.kind
-  if (project.status !== undefined) row.status = project.status
-  if (project.progress !== undefined) row.progress = project.progress
-  if (project.start !== undefined) row.start_date = project.start
-  if (project.due !== undefined) row.due_date = project.due
-  if (project.team !== undefined) row.team = project.team
-  if (project.health !== undefined) row.health = project.health
-  if (project.budget !== undefined) row.budget = project.budget
-  if (project.spent !== undefined) row.spent = project.spent
-  if (project.tasksDone !== undefined) row.tasks_done = project.tasksDone
-  if (project.tasksTotal !== undefined) row.tasks_total = project.tasksTotal
-  if (project.accent !== undefined) row.accent = project.accent
-  if (project.createdAt !== undefined) row.created_at = project.createdAt
-  if (project.updatedAt !== undefined) row.updated_at = project.updatedAt
-
+  if (task.url !== undefined)         row.url = task.url
+  if (task.type !== undefined)        row.type = task.type as LearningResourceType
+  if (task.assignee !== undefined)    row.assignee = task.assignee
+  if (task.due !== undefined)         row.due = task.due
+  if (task.duration !== undefined)    row.duration = task.duration
+  if (task.tags !== undefined)        row.tags = task.tags
+  if (task.progress !== undefined)    row.progress = task.progress as Json
   return row
 }
