@@ -12,7 +12,7 @@ export const USER_STATUS = {
 } as const;
 
 export const COLUMNS = [
-  { id:"backlog",  title:"Backlog",      hint:"Ideas y pendientes sin asignar" },
+  { id:"blocked", title:"Backlog",      hint:"Ideas y pendientes sin asignar" },
   { id:"todo",     title:"Por hacer",    hint:"Listo para empezar esta semana" },
   { id:"progress", title:"En progreso",  hint:"Trabajando activamente" },
   { id:"review",   title:"En revisión",  hint:"Pendiente de QA o aprobación" },
