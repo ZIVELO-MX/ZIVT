@@ -96,7 +96,7 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Campos financieros en tareas, gastos, pagos, reportes
 - [ ] Búsqueda y filtros fuera del Kanban
 
-**UX** (inventario completo en `app-next/BOTONES-SIN-FUNCIONALIDAD.md` — 28 elementos sin handler)
+**UX** (inventario completo en `BOTONES-SIN-FUNCIONALIDAD.md` — 28 elementos sin handler)
 - [ ] Guardar cambios en TaskDetail no persiste; subtareas y comentarios no se pueden crear
 - [ ] Menús contextuales `⋯` de columnas y proyectos vacíos
 - [ ] Invitar al equipo, Configuración, ítems del menú de usuario sin acción
@@ -341,7 +341,7 @@ Zoho OAuth nativo · adjuntos en Supabase Storage · integración lectura con he
 2. ~~Restringir acceso al dominio Zoho~~ — **hecho en PR #10** (`feat/auth-domain-guard`); el flujo de invitación sigue pendiente (ver Pendientes bloqueados).
 3. **Flujo de invitación al equipo** desde el botón del sidebar: requiere Supabase Edge Function o route handler con service-role key (`auth.admin.inviteUserByEmail`) + validación de dominio. *(v0.1)*
 4. **Probar RLS con usuarios reales de cada rol:** crear un usuario `editor` y un `viewer` de prueba y verificar que Clientes/MRR quedan inaccesibles por API, no solo ocultos en UI. *(v0.1, requiere acceso a Supabase Studio)*
-5. **Verificar el deploy de Vercel** (root directory `app-next`, env vars incl. `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`) y dejar URL interna estable documentada en el README. *(v0.1, requiere acceso al dashboard de Vercel)*
+5. **Verificar el deploy de Vercel** (root directory `.`, env vars incl. `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`) y dejar URL interna estable documentada en el README. *(v0.1, requiere acceso al dashboard de Vercel)*
 
 ---
 
