@@ -103,4 +103,4 @@ Análisis de todos los botones, enlaces y elementos clickeables que actualmente 
 
 ---
 
-*Generado: análisis automático de componentes en `app-next/`*
+*Generado: análisis automático de componentes en la raíz del proyecto*

@@ -128,7 +128,7 @@ Todas las vistas implementadas con mock data. Ver historial de sesiones anterior
 **Hardening completado:**
 - `components/modals.tsx` — logout llama `supabase.auth.signOut()` real antes de redirect
 - `next.config.mjs` — security headers completos + CSP dinámico sin hardcode
-- `.gitignore` — `.env.local` protegido en raíz y `app-next/`
+- `.gitignore` — `.env.local` protegido en raíz
 - `.env.example` — documenta `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - Build de producción: ✅ sin errores ni warnings
 - Sin `console.log` ni credenciales hardcodeadas en source
@@ -141,12 +141,11 @@ Todas las vistas implementadas con mock data. Ver historial de sesiones anterior
 # 1. Instalar Vercel CLI (si no lo tienes)
 npm i -g vercel
 
-# 2. Desde la carpeta app-next
-cd app-next
+# 2. Desde la raíz del repositorio
 vercel
 
 # 3. Cuando Vercel pregunte:
-#    - Root Directory: . (ya estás en app-next)
+#    - Root Directory: . (raíz del repo)
 #    - Framework: Next.js (detecta automático)
 ```
 
@@ -156,11 +155,12 @@ vercel
 |-----|-------|
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://rnovkjurksxyddgsqkpe.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (anon key de Supabase → Project Settings → API) |
+| `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS` | `zivelo.dev` |
 
 **Alternativa vía Dashboard:**
 1. vercel.com/new → importar repositorio
-2. Root Directory: `app-next`
-3. Agregar las 2 env vars arriba
+2. Root Directory: `.` (raíz del repo)
+3. Agregar las 3 env vars arriba
 4. Deploy
 
 ---

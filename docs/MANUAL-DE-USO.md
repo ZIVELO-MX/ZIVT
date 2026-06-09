@@ -67,8 +67,7 @@ Panel interno de control para el equipo de Zivelo. Gestiona proyectos, tareas (k
 
 ```
 /
-├── app-next/
-│   ├── app/
+├── app/
 │   │   ├── globals.css        # Design tokens, dark mode, animaciones
 │   │   ├── layout.tsx         # Root layout (HTML, fonts, metadata)
 │   │   ├── page.tsx           # SPA principal (dashboard + vistas)
