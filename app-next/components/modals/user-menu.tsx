@@ -68,12 +68,8 @@ export function UserMenu({ open, anchorRef, onClose, user, dark, onToggleDark, o
       <div className="p-2 border-t border-line2">
         <button type="button"
           onClick={async () => {
-            try {
-              localStorage.removeItem('zivelo-dark')
-              localStorage.removeItem('zivelo-sidebar')
-              localStorage.removeItem('zivelo-density')
-              localStorage.removeItem('zivelo-remember')
-            } catch {}
+            // Logout solo cierra sesión: las preferencias de dispositivo
+            // (tema, sidebar, email recordado) sobreviven entre sesiones
             await createClient().auth.signOut()
             router.push('/login')
           }}
