@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isAllowedEmail } from './lib/auth-domain'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -26,6 +27,18 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const isLoginPage = request.nextUrl.pathname === '/login'
+
+  if (user && !isAllowedEmail(user.email)) {
+    await supabase.auth.signOut()
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    url.search = ''
+    url.searchParams.set('error', 'domain')
+    const redirect = NextResponse.redirect(url)
+    // Propagar las cookies del signOut para que la sesión rechazada no quede viva
+    supabaseResponse.cookies.getAll().forEach(c => redirect.cookies.set(c))
+    return redirect
+  }
 
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone()

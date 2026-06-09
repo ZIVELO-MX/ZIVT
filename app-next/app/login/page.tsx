@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { isAllowedEmail } from '@/lib/auth-domain';
+
+const DOMAIN_ERROR = 'Tu cuenta no pertenece al dominio corporativo de Zivelo. Usa tu email Zoho de Zivelo.';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,11 +36,21 @@ export default function LoginPage() {
         setRemember(true);
       }
     } catch {}
+    // window.location en vez de useSearchParams para no requerir <Suspense> en prerender
+    if (new URLSearchParams(window.location.search).get('error') === 'domain') {
+      setError(DOMAIN_ERROR);
+    }
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!isAllowedEmail(email)) {
+      setError(DOMAIN_ERROR);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -120,7 +133,7 @@ export default function LoginPage() {
               <label className="block">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[12px] font-semibold text-carbon uppercase tracking-wider">Contraseña</span>
-                  <a href="#" className="text-[12px] font-semibold text-zred hover:underline">¿Olvidaste tu contraseña?</a>
+                  <span className="text-[12px] text-muted">¿Olvidaste tu contraseña? Pide un reset al admin</span>
                 </div>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted">
@@ -189,23 +202,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            <div className="my-6 flex items-center gap-3 fade-up delay-3">
-              <div className="flex-1 h-px bg-line"></div>
-              <span className="text-[11px] font-semibold text-muted uppercase tracking-wider">o continúa con</span>
-              <div className="flex-1 h-px bg-line"></div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 fade-up delay-3">
-              <button className="btn-press h-11 rounded-full border border-line bg-white hover:border-zred/40 hover:bg-soft transition-colors inline-flex items-center justify-center gap-2 text-[13.5px] font-semibold">
-                <svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h6c-.3 1.4-1 2.5-2.2 3.3v2.7h3.6c2.1-1.9 3.2-4.7 3.2-7.8z"/><path fill="#34A853" d="M12 23c2.9 0 5.4-1 7.2-2.6l-3.6-2.7c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.1-1.9-6-4.4H2.2v2.8C4 20.7 7.7 23 12 23z"/><path fill="#FBBC05" d="M6 14.4c-.2-.7-.4-1.4-.4-2.4s.1-1.7.4-2.4V6.8H2.2C1.4 8.4 1 10.1 1 12s.4 3.6 1.2 5.2L6 14.4z"/><path fill="#EA4335" d="M12 5.6c1.6 0 3 .5 4.1 1.6L19.3 4C17.4 2.3 14.9 1.2 12 1.2 7.7 1.2 4 3.5 2.2 6.8L6 9.6c.9-2.5 3.2-4.4 6-4.4z"/></svg>
-                Google
-              </button>
-              <button className="btn-press h-11 rounded-full border border-line bg-white hover:border-zred/40 hover:bg-soft transition-colors inline-flex items-center justify-center gap-2 text-[13.5px] font-semibold">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.2.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.8.1-.8.1-.8 1.2.1 1.9 1.3 1.9 1.3 1.1 1.9 2.9 1.3 3.6 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.3-3.2-.1-.3-.6-1.6.1-3.3 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.2 3 .1 3.3.8.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z"/></svg>
-                GitHub
-              </button>
-            </div>
-
             <p className="mt-8 text-center text-[12.5px] text-muted fade-up delay-3">
               ¿No tienes cuenta?{' '}
               <span className="text-carbon font-medium">Solicita una invitación a un administrador</span>
@@ -215,11 +211,6 @@ export default function LoginPage() {
 
         <footer className="mt-10 flex flex-wrap items-center justify-between gap-3 text-[11.5px] text-muted fade-up delay-3">
           <div>© 2026 Zivelo · Workspace interno</div>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-carbon">Soporte</a>
-            <a href="#" className="hover:text-carbon">Privacidad</a>
-            <a href="#" className="hover:text-carbon">Estado del sistema</a>
-          </div>
         </footer>
       </div>
 
