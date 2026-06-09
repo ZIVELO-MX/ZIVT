@@ -3,19 +3,19 @@
 **Rol del documento:** roadmap de producto versionado (v0.1 → v1.0 → Futuro), auditoría del estado actual y modelo de datos objetivo.
 **Relación con `.planning/ROADMAP.md`:** aquel documento es el plan de *ejecución técnica* (fases 1–10 para conectar la UI a Supabase). Este documento es el plan de *producto*: define qué es la herramienta, qué versiones existen y qué no se construye.
 
-*Última actualización: 2026-06-09*
+*Última actualización: 2026-06-09 (rev. 2 — refleja el avance de main: auth real, middleware, eliminación de mocks)*
 
 ---
 
 ## 1. Diagnóstico del producto
 
-**Qué es hoy:** una UI completa (Next.js + Tailwind + Supabase) con 6 vistas — Dashboard, Kanban, Proyectos, Clientes, Usuarios, Aprendizaje — donde **solo el Kanban y los CRUD básicos tienen camino real a persistencia** (migraciones y queries existen), pero **el login sigue siendo mock**, lo que significa que en la práctica nada está protegido ni atribuido a un usuario real.
+**Qué es hoy:** una UI completa (Next.js + Tailwind + Supabase) con 6 vistas — Dashboard, Kanban, Proyectos, Clientes, Usuarios, Aprendizaje — con **auth real (Supabase `signInWithPassword`), middleware de protección de rutas (`proxy.ts`), logout real y datos cargados desde Supabase con realtime (`useAppData`)**. Los mocks de `lib/data.ts` fueron eliminados de main.
 
-**Diagnóstico en una frase:** la herramienta tiene *amplitud* de UI pero *profundidad* cero en las capas que la hacen confiable: autenticación, permisos efectivos, historial y datos financieros operativos.
+**Diagnóstico en una frase:** la base de confiabilidad (auth + datos reales) ya está; la profundidad que falta es de producto: vistas alternativas, import/export, trazabilidad y finanzas operativas.
 
-**Los 4 problemas estructurales:**
+**Los problemas estructurales (estado):**
 
-1. **Auth mock = producto no usable.** Cualquier release interna requiere login real con las cuentas Zoho del equipo. Es el bloqueante número uno.
+1. ~~**Auth mock.**~~ **Resuelto en main + PR #10:** login real, middleware, logout y restricción al dominio Zoho (`feat/auth-domain-guard`). Pendiente de v0.1: flujo de invitación desde el sidebar, reset de contraseña y prueba de RLS con usuarios reales de cada rol.
 2. **Una sola vista de trabajo.** Todo vive en el Kanban; no hay vista lista/tabla ni calendario, y los filtros existen solo en el tablero.
 3. **Los datos no entran ni salen.** No hay export CSV/JSON funcional (el botón existe sin handler) ni import de ningún tipo. Para una herramienta interna, import/export es lo que evita el lock-in del propio equipo.
 4. **Cero noción financiera a nivel de tarea.** Los proyectos tienen `budget`/`spent` y los clientes tienen `mrr`, pero ninguna tarea puede costar ni generar dinero, y no existen movimientos, gastos, pagos ni reportes. Este es el diferenciador pedido y hoy no existe nada de él.
@@ -80,11 +80,13 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 ### ❌ Falta (y bloquea o degrada el uso real)
 
 **Técnico**
-- [ ] **Login real** — el submit es un mock con delay de 700 ms (`app/login/page.tsx`); bloqueante absoluto
-- [ ] Restricción de registro al dominio Zoho de Zivelo (allowlist de dominio o invitación)
-- [ ] Logout real (hoy solo navega a `/login` sin destruir sesión)
-- [ ] Middleware de protección de rutas (redirect sin sesión)
-- [ ] Verificación de que la UI realmente lee de Supabase y no de `lib/data.ts` (mocks) en cada vista
+- [x] **Login real** — resuelto en main: `signInWithPassword` en `app/login/page.tsx`
+- [x] Restricción al dominio Zoho — resuelto en PR #10: guard en `proxy.ts` + pre-check en login (`NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`)
+- [x] Logout real — resuelto en main (`auth.signOut`); PR #10 corrigió que borraba preferencias de dispositivo
+- [x] Middleware de protección de rutas — resuelto en main (`proxy.ts`)
+- [x] UI lee de Supabase — `lib/data.ts` eliminado en main; `useAppData` con realtime
+- [ ] Flujo de reset de contraseña (hoy: pedir reset al admin desde Supabase Studio)
+- [ ] Flujo de invitación al equipo (requiere service-role key o Edge Function — ver Pendientes bloqueados)
 
 **Producto**
 - [ ] Vista lista/tabla de tareas
@@ -110,6 +112,7 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Deploy estable (root directory de Vercel recién configurado, sin verificar)
 - [ ] Sin backups documentados ni proceso de restore
 - [ ] Sin onboarding del equipo (¿quién invita, cómo se asigna rol?)
+- [ ] Sin tests automatizados — PR #10 introduce Vitest con los primeros tests (`lib/auth-domain`, `exportToCSV`); falta cubrir queries y componentes
 
 ### ⏸️ No construir todavía (decidido, ver sección 9)
 
@@ -334,8 +337,28 @@ Zoho OAuth nativo · adjuntos en Supabase Storage · integración lectura con he
 
 ## 10. Próximas 5 tareas de implementación
 
-1. **Conectar el login a Supabase Auth** (`app/login/page.tsx`): reemplazar el mock del submit, manejar errores reales, logout real en el menú de usuario, middleware de redirect sin sesión. *(v0.1, bloqueante)*
-2. **Restringir acceso al dominio Zoho de Zivelo:** deshabilitar signup público; flujo de invitación desde el botón "Invitar al equipo" del sidebar con validación de dominio. *(v0.1)*
-3. **Auditar vista por vista qué lee mocks** (`lib/data.ts`) vs Supabase, y cablear las que falten — empezando por Kanban (TaskDetail "Guardar cambios", subtareas, comentarios: ítems #17–19 de `BOTONES-SIN-FUNCIONALIDAD.md`). *(v0.1)*
-4. **Probar RLS con usuarios reales de cada rol:** crear un usuario `editor` y un `viewer` de prueba y verificar que Clientes/MRR quedan inaccesibles por API, no solo ocultos en UI. *(v0.1)*
-5. **Verificar el deploy de Vercel** (root directory `app-next`, env vars de Supabase) y dejar URL interna estable documentada en el README. *(v0.1)*
+1. ~~Conectar el login a Supabase Auth~~ — **hecho en main** (login, logout, middleware `proxy.ts`).
+2. ~~Restringir acceso al dominio Zoho~~ — **hecho en PR #10** (`feat/auth-domain-guard`); el flujo de invitación sigue pendiente (ver Pendientes bloqueados).
+3. **Flujo de invitación al equipo** desde el botón del sidebar: requiere Supabase Edge Function o route handler con service-role key (`auth.admin.inviteUserByEmail`) + validación de dominio. *(v0.1)*
+4. **Probar RLS con usuarios reales de cada rol:** crear un usuario `editor` y un `viewer` de prueba y verificar que Clientes/MRR quedan inaccesibles por API, no solo ocultos en UI. *(v0.1, requiere acceso a Supabase Studio)*
+5. **Verificar el deploy de Vercel** (root directory `app-next`, env vars incl. `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`) y dejar URL interna estable documentada en el README. *(v0.1, requiere acceso al dashboard de Vercel)*
+
+---
+
+## 11. Registro de refactors y fixes
+
+*Código mejorado durante la auditoría (PR #10, rama `feat/auth-domain-guard`):*
+
+- **Fix logout (`components/modals/user-menu.tsx`):** el logout borraba las preferencias de dispositivo (`zivelo-dark`, `zivelo-sidebar`, `zivelo-density`) y una key inexistente `zivelo-remember` — el login guarda `zivelo-remember-email`, así que esa línea no hacía nada. Ahora el logout solo cierra sesión; las preferencias sobreviven entre sesiones.
+- **UI muerta eliminada del login:** botones SSO Google/GitHub sin `onClick` (OAuth es Futuro según este roadmap), link "¿Olvidaste tu contraseña?" a `href="#"` (reemplazado por texto "pide reset al admin" hasta que exista el flujo) y links del footer a `#`.
+- **Deuda detectada, no tocada aún:** `useAppData.teams: any[]` es un leftover sin uso real; varios componentes tipan props como `any` (`user-menu.tsx`, otros modales). Candidatos a refactor cuando se toque cada archivo.
+
+## 12. Pendientes bloqueados (saltados y documentados)
+
+| Pendiente | Por qué está bloqueado | Qué se necesita |
+|---|---|---|
+| Confirmar el dominio Zoho real | Asumí `zivelo.mx` en `.env.example` | Confirmación del equipo; configurar `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS` en Vercel |
+| Flujo de invitación al equipo | `auth.admin.inviteUserByEmail` requiere service-role key que no debe ir al cliente | Edge Function o route handler server-side + `SUPABASE_SERVICE_ROLE_KEY` en Vercel |
+| Flujo de reset de contraseña | Requiere página `/auth/reset` + configurar redirect URL en Supabase | Decisión de UX + acceso a config de Supabase Auth |
+| Prueba de RLS por rol | Requiere crear usuarios de prueba en el proyecto Supabase real | Acceso a Supabase Studio |
+| Verificación del deploy | Requiere acceso al dashboard de Vercel | Acceso al proyecto en Vercel |
