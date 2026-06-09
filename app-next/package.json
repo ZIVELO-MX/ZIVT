@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
@@ -23,6 +24,7 @@
     "@types/react-dom": "19.2.3",
     "react-doctor": "^0.2.14",
     "tailwindcss": "4.3.0",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "^4.1.8"
   }
 }
