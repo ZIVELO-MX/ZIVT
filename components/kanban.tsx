@@ -9,6 +9,7 @@ import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { ConfirmDialog, FiltersDrawer } from './modals'
 import { createTask, updateTask, deleteTask, moveTask } from '@/lib/supabase/queries'
 import { notifyTaskCompleted, notifyTaskCreated } from '@/lib/supabase/notify'
+import { ExportButton } from './export-modal'
 
 const PROG_COLOR: Record<string, string> = {
   todo:     '#D1D1CE',
@@ -820,6 +821,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [], loadi
           <Ic.Filter width="14" height="14"/> Filtros
           {activeFilterCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-zred text-white text-[10.5px] font-bold nums">{activeFilterCount}</span>}
         </Button>
+        <ExportButton data={filtered} projects={projects} profiles={profiles} filename="tareas-kanban" viewName="tareas (Kanban)" />
         <Button variant="primary" size="md" onClick={() => dispatch({ type: 'OPEN_NEW_TASK', col: 'todo' })}>
           <Ic.Plus width="15" height="15"/> Nueva tarea
         </Button>

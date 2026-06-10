@@ -3,10 +3,10 @@
 import { useState, useMemo, useReducer, useRef, useEffect } from 'react'
 import { Ic } from '@/components/icons'
 import { Button, Avatar, Badge, Tag, Skeleton } from './ui'
-import { COLUMNS, TAG_STYLES, PRIORITY, formatDate, daysUntil } from '@/lib/constants'
+import { COLUMNS, PRIORITY, daysUntil } from '@/lib/constants'
 import { updateTask } from '@/lib/supabase/queries'
 import { FiltersDrawer } from './modals'
-import { exportToCSV, exportToJSON, taskToExportRow } from '@/lib/utils'
+import { ExportButton } from './export-modal'
 
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Más recientes' },
@@ -166,16 +166,6 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
     )
   }
 
-  function handleExportCSV() {
-    const rows = filtered.map((t: any) => taskToExportRow(t, projects, profiles))
-    exportToCSV(rows, `tareas-${new Date().toISOString().split('T')[0]}`)
-  }
-
-  function handleExportJSON() {
-    const rows = filtered.map((t: any) => taskToExportRow(t, projects, profiles))
-    exportToJSON(rows, `tareas-${new Date().toISOString().split('T')[0]}`)
-  }
-
   const colStyles: Record<string, string> = {
     todo: 'bg-[#F0F0EE] text-[#6B6B6B]',
     progress: 'bg-[#EEF0FF] text-[#3A47B5]',
@@ -224,23 +214,11 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
         <div className="hidden md:flex flex-1" />
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={handleExportCSV} className="btn-press md:hidden size-10 rounded-full border border-line bg-white text-muted hover:text-carbon inline-flex items-center justify-center" title="Exportar CSV">
-            <Ic.Filter width="14" height="14" />
-          </button>
-          <Button variant="secondary" size="sm" onClick={handleExportCSV} className="hidden md:inline-flex">
-            <Ic.Filter width="13" height="13" /> CSV
-          </Button>
-          <Button variant="secondary" size="sm" onClick={handleExportJSON} className="hidden md:inline-flex">
-            JSON
-          </Button>
-          <button type="button" onClick={handleExportJSON} className="btn-press md:hidden size-10 rounded-full border border-line bg-white text-muted hover:text-carbon inline-flex items-center justify-center text-[11px] font-bold" title="Exportar JSON">
-            {'{ }'}
-          </button>
           <Button variant="secondary" size="md" onClick={() => { dispatch({ type: 'SET_DRAFT', value: state.filters }); dispatch({ type: 'SET_FILTERS_OPEN', value: true }) }}>
             <Ic.Filter width="14" height="14" /> <span className="hidden md:inline">Filtros</span>
             {activeFilterCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-zred text-white text-[10.5px] font-bold nums">{activeFilterCount}</span>}
           </Button>
-          <AiPromptButton filtered={filtered} projects={projects} profiles={profiles} />
+          <ExportButton data={filtered} projects={projects} profiles={profiles} filename="tareas" viewName="tareas" />
         </div>
       </div>
 
@@ -402,83 +380,6 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
         onClose={() => dispatch({ type: 'SET_FILTERS_OPEN', value: false })}
       />
     </div>
-  )
-}
-
-function AiPromptButton({ filtered, projects, profiles }: any) {
-  const [copied, setCopied] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [instruction, setInstruction] = useState('genera un resumen ejecutivo agrupado por proyecto')
-
-  function generatePrompt() {
-    const sample = filtered.slice(0, 2).map((t: any) => taskToExportRow(t, projects, profiles))
-    const fields = Object.keys(sample[0] || {}).map(k => `${k}: ${typeof (sample[0]?.[k] ?? '') === 'number' ? 'number' : 'string'}`).join(', ')
-    return [
-      `Exporté ${filtered.length} registros de tareas desde Zivelo Panel en formato JSON.`,
-      `Campos: ${fields}`,
-      ``,
-      `Ejemplo de datos:`,
-      JSON.stringify(sample, null, 2),
-      ``,
-      `Instrucción: ${instruction}`,
-      ``,
-      `Devuelve solo el resultado listo para usar, sin explicaciones adicionales.`,
-    ].join('\n')
-  }
-
-  function handleCopy() {
-    const prompt = generatePrompt()
-    navigator.clipboard.writeText(prompt).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
-  }
-
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)}
-        className="btn-press size-10 rounded-full border border-line bg-white text-muted hover:text-carbon inline-flex items-center justify-center md:px-4 md:w-auto md:rounded-full md:gap-2 md:text-[13px] md:font-semibold"
-        title="Copiar prompt IA">
-        <span className="text-[15px]">🤖</span>
-        <span className="hidden md:inline">Prompt IA</span>
-      </button>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <button type="button" className="absolute inset-0 bg-carbon/30 fade-in cursor-default" onClick={() => setOpen(false)} aria-label="Cerrar" />
-          <div className="relative bg-white rounded-t-xl sm:rounded-lg shadow-pop border border-line2 pop-in flex flex-col w-full max-h-[80vh] sm:max-h-[70vh]" style={{ maxWidth: 480 }}>
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-line2 shrink-0">
-              <h3 className="font-semibold text-[16px]">Copiar prompt IA</h3>
-              <button type="button" onClick={() => setOpen(false)} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
-                <Ic.X width="18" height="18" />
-              </button>
-            </div>
-            <div className="px-4 sm:px-6 py-5 space-y-4 overflow-y-auto">
-              <div className="text-[13px] text-muted">
-                Genera un prompt con el formato de tus datos para que una IA los procese.
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">¿Qué debe hacer la IA?</div>
-                <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-                  placeholder="Ej: calcula totales por proyecto, genera un gráfico..."
-                  className="w-full h-10 px-3 rounded-md border border-line text-[13px] outline-none focus:border-zred" />
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Formato de datos ({filtered.length} registros)</div>
-                <pre className="bg-soft rounded-md p-3 text-[11px] font-mono text-muted overflow-x-auto max-h-32">
-                  {JSON.stringify(taskToExportRow(filtered[0] || {}, projects, profiles), null, 2)}
-                </pre>
-              </div>
-            </div>
-            <div className="px-4 sm:px-6 py-4 border-t border-line2 flex justify-end gap-2 shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button variant="primary" size="sm" onClick={handleCopy}>
-                {copied ? '✓ Copiado' : 'Copiar prompt'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   )
 }
 
