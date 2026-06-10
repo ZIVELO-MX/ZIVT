@@ -14,8 +14,9 @@ import Users from '@/components/users';
 import ProfileView from '@/components/profile';
 import Learning from '@/components/learning';
 import TaskList from '@/components/tasks-list';
+import Calendar from '@/components/calendar';
 
-const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile','list'];
+const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile','list','calendar'];
 
 export default function HomePage() {
   const [view, setView] = useState('dashboard');
@@ -157,6 +158,7 @@ export default function HomePage() {
           {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles} />}
           {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading} />}
           {view === 'list'      && <TaskList tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading} />}
+          {view === 'calendar' && <Calendar tasks={tasks} setView={setView} />}
           {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles} />}
           {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles} />}
           {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} setTasks={setTasks} />}

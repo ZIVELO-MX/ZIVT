@@ -58,6 +58,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
     { id: 'dashboard', label: 'Dashboard', icon: <Ic.Dashboard width="18" height="18" /> },
     { id: 'kanban', label: 'Pendientes', icon: <Ic.Kanban width="18" height="18" />, badge: counts.tasks },
     { id: 'list', label: 'Lista', icon: <Ic.List width="18" height="18" />, badge: counts.tasks },
+    { id: 'calendar', label: 'Calendario', icon: <Ic.Calendar width="18" height="18" /> },
     { id: 'learning', label: 'Aprendizaje', icon: <Ic.BookOpen width="18" height="18" /> },
     { id: 'projects', label: 'Proyectos', icon: <Ic.Folder width="18" height="18" />, badge: counts.activeProjects },
     !hideClients ? { id: 'clients', label: 'Clientes', icon: <Ic.Briefcase width="18" height="18" />, badge: counts.clients } : null,
@@ -198,6 +199,7 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   settings:    { t: 'Configuración',  s: 'Gestiona tu cuenta, apariencia y equipo' },
   profile:     { t: 'Mi perfil',      s: 'Información de tu cuenta' },
   learning:    { t: 'Aprendizaje',    s: 'Materiales de estudio y desarrollo del equipo' },
+  calendar:    { t: 'Calendario',     s: 'Vista de calendario con eventos y tareas' },
 }
 
 export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu }: any) {
