@@ -101,7 +101,8 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Menús contextuales `⋯` de columnas y proyectos vacíos
 - [ ] Invitar al equipo, Configuración, ítems del menú de usuario sin acción
 - [x] **Skeleton / loading states** — implementado en Kanban y TaskList (PR #12); componente `<Skeleton>` con 7 variantes; `useAppData` expone `loading`
-- [x] **Botón "Prompt IA"** — en el modal Exportar/Importar, pestaña Prompt IA: seleccionas formato (CSV/JSON), describe los datos a generar, copia el prompt al portapapeles. La IA responde con datos que se pegan en Importar.
+- [x] **Botón "Prompt IA"** — en el modal Exportar/Importar, pestaña Prompt IA: selector de proyecto + `project_id` en schema, instrucción editable, copia prompt en inglés con contexto realista
+- [ ] **Estilo de dropdowns y animaciones** — los `<select>` del modal Exportar y filtros no tienen estilo coherente; falta animación suave en botones (hover, active, toggle) en toda la app
 
 **Datos**
 - [ ] Sin tabla de tags (hoy `tag` es un string suelto en task)
