@@ -14,7 +14,7 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
   const [tab, setTab] = useState<'export' | 'import' | 'prompt'>('export')
   const [importText, setImportText] = useState('')
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
-  const [exportFormat, setExportFormat] = useState<'csv' | 'json' | null>(null)
+  const [exportFormat, setExportFormat] = useState<'csv' | 'json'>('csv')
 
   const rows = data.map((t: any) => taskToExportRow(t, projects, profiles))
 
@@ -110,7 +110,7 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
 
   return (
     <>
-      <button type="button" onClick={() => { setOpen(true); setExportFormat(null); setImportResult(null); setImportText('') }}
+      <button type="button" onClick={() => { setOpen(true); setExportFormat('csv'); setImportResult(null); setImportText('') }}
         className="btn-press h-10 px-4 rounded-full border border-line bg-white text-carbon text-[13px] font-semibold hover:border-zred hover:text-zred inline-flex items-center gap-2 transition-all">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M8 11l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         Exportar / Importar
@@ -164,7 +164,7 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                         {new Blob([getContent(exportFormat || 'csv')]).size.toLocaleString()} bytes
                       </span>
                     </div>
-                    <pre className="p-3 text-[11px] font-mono leading-relaxed text-carbon overflow-x-auto max-h-48 bg-white">
+                    <pre key={exportFormat} className="p-3 text-[11px] font-mono leading-relaxed text-carbon overflow-x-auto max-h-48 bg-white fade-in">
                       {exportFormat === 'csv'
                         ? toCSV(rows.slice(0, 10))
                         : toJSON(rows.slice(0, 10))}
