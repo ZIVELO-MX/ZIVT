@@ -112,6 +112,7 @@ export default function HomePage() {
     <div className="min-h-screen flex">
       <Sidebar
         view={view}
+        activeView={view === 'task-detail' ? prevViewRef.current : undefined}
         setView={setView}
         counts={counts}
         collapsed={sidebarCollapsed}
@@ -131,6 +132,7 @@ export default function HomePage() {
           userMenuRef={userMenuRef}
           notifBtnRef={notifBtnRef}
           onOpenMenu={() => setMobileMenuOpen(true)}
+          sectionLabel={view === 'task-detail' ? (sectionLabels[prevViewRef.current] || 'Detalle de tarea') : undefined}
         />
         <UserMenu
           open={userMenuOpen}

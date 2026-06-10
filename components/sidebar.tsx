@@ -48,7 +48,7 @@ export function NavItem({ icon, label, active, badge, onClick, collapsed }: any)
   )
 }
 
-export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [] }: any) {
+export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [], activeView }: any) {
   const [mobile, setMobile] = useState(true)
   useEffect(() => { setMobile(window.innerWidth < 768) }, [])
   const collapsed = mobile ? false : collapsedProp
@@ -123,7 +123,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
               key={it.id}
               icon={it.icon}
               label={it.label}
-              active={view === it.id}
+              active={(activeView || view) === it.id}
               badge={it.badge}
               collapsed={collapsed}
               onClick={() => handleNav(it.id)}
@@ -203,8 +203,9 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   'task-detail': { t: 'Detalle de tarea', s: 'Vista completa de la tarea' },
 }
 
-export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu }: any) {
+export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu, sectionLabel }: any) {
   const cur = TOPBAR_TITLES[view] ?? { t: view, s: '' }
+  const label = view === 'task-detail' && sectionLabel ? sectionLabel : cur.t
   const currentUser = useCurrentProfile()
 
   return (
@@ -226,9 +227,9 @@ export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, user
           <div className="hidden md:flex items-center gap-2 text-[12px] text-muted mb-0.5">
             <span>Zivelo</span>
             <span>›</span>
-            <span className="text-carbon font-medium">{cur.t}</span>
+            <span className="text-carbon font-medium">{label}</span>
           </div>
-          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{cur.t}</h1>
+          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{label}</h1>
         </div>
 
         <button type="button" onClick={onOpenCommand}
