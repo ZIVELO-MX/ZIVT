@@ -205,7 +205,6 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
 
 export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu, sectionLabel }: any) {
   const cur = TOPBAR_TITLES[view] ?? { t: view, s: '' }
-  const label = view === 'task-detail' && sectionLabel ? sectionLabel : cur.t
   const currentUser = useCurrentProfile()
 
   return (
@@ -227,9 +226,17 @@ export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, user
           <div className="hidden md:flex items-center gap-2 text-[12px] text-muted mb-0.5">
             <span>Zivelo</span>
             <span>›</span>
-            <span className="text-carbon font-medium">{label}</span>
+            {view === 'task-detail' && sectionLabel ? (
+              <>
+                <span className="text-carbon font-medium">{sectionLabel}</span>
+                <span>›</span>
+                <span className="text-carbon font-medium">Detalle de tarea</span>
+              </>
+            ) : (
+              <span className="text-carbon font-medium">{cur.t}</span>
+            )}
           </div>
-          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{label}</h1>
+          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{view === 'task-detail' ? 'Detalle de tarea' : cur.t}</h1>
         </div>
 
         <button type="button" onClick={onOpenCommand}
