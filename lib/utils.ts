@@ -45,6 +45,33 @@ export function exportToJSON(rows: any[], filename: string) {
   URL.revokeObjectURL(url)
 }
 
+export type ValidationResult = { ok: boolean; msg: string }
+
+export function validateImportText(text: string): ValidationResult {
+  const trimmed = text.trim()
+  if (!trimmed) return { ok: false, msg: 'Pega el contenido CSV o JSON primero.' }
+
+  try {
+    const parsed = JSON.parse(trimmed)
+    if (!Array.isArray(parsed)) return { ok: false, msg: 'JSON válido pero no es un arreglo. Se espera un arreglo de objetos.' }
+    if (parsed.length === 0) return { ok: false, msg: 'El arreglo está vacío. No hay datos para importar.' }
+    return { ok: true, msg: `JSON válido: ${parsed.length} registro(s) detectado(s).` }
+  } catch {
+    const lines = trimmed.split('\n').filter(l => l.trim())
+    if (lines.length < 2) return { ok: false, msg: 'CSV debe tener al menos un encabezado y una fila de datos.' }
+    const headers = lines[0].split(',').map(h => h.trim())
+    if (headers.length < 2) return { ok: false, msg: 'CSV debe tener al menos 2 columnas.' }
+    const dataLines = lines.slice(1)
+    let errors = 0
+    dataLines.forEach((line, i) => {
+      const cols = line.split(',').map(c => c.trim())
+      if (cols.length !== headers.length) errors++
+    })
+    if (errors > 0) return { ok: false, msg: `CSV: ${dataLines.length} fila(s), ${errors} con número incorrecto de columnas. Revisa el formato.` }
+    return { ok: true, msg: `CSV válido: ${dataLines.length} registro(s) con ${headers.length} columna(s).` }
+  }
+}
+
 export function taskToExportRow(task: any, projects: any[], profiles: any[]): Record<string, any> {
   const project = projects.find(p => p.id === task.project)
   const assignees = (task.assignee || []).map((id: string) => {
