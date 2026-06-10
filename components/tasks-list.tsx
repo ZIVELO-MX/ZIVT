@@ -42,7 +42,7 @@ function reducer(state: any, action: any) {
   }
 }
 
-export default function TaskList({ tasks, setTasks, projects, profiles = [], loading }: any) {
+export default function TaskList({ tasks, setTasks, projects, profiles = [], loading, onOpenTask }: any) {
   const [state, dispatch] = useReducer(reducer, INIT)
   const listRef = useRef(tasks)
   useEffect(() => { listRef.current = tasks }, [tasks])
@@ -248,7 +248,7 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
                 const team = (task.assignee || []).flatMap((id: string) => { const u = profiles.find(m => m.id === id); return u ? [u] : [] })
                 const subDone = (task.subtasks || []).filter((s: any) => s.d).length
                 return (
-                  <tr key={task.id} className="border-b border-line2 last:border-0 hover:bg-soft/50 transition-colors">
+                  <tr key={task.id} onClick={() => onOpenTask?.(task)} className="border-b border-line2 last:border-0 hover:bg-soft/50 transition-colors cursor-pointer">
                     <td className="px-4 py-3">
                       <div className="font-semibold text-[13px] text-carbon leading-snug max-w-[280px] truncate">{task.title}</div>
                     </td>
@@ -262,7 +262,7 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
                       {state.editingStatus === task.id ? (
                         <StatusSelect task={task} onClose={() => dispatch({ type: 'CLEAR_EDITING' })} />
                       ) : (
-                        <button type="button" onClick={() => dispatch({ type: 'EDIT_STATUS', value: task.id })}
+                        <button type="button" onClick={(e) => { e.stopPropagation(); dispatch({ type: 'EDIT_STATUS', value: task.id }) }}
                           className={`px-2.5 h-7 rounded-full text-[11px] font-semibold border border-transparent hover:border-line ${colStyles[task.col] || 'bg-soft text-muted'}`}>
                           {COLUMNS.find(c => c.id === task.col)?.title || task.col}
                         </button>
@@ -278,7 +278,7 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
                       {state.editingAssignee === task.id ? (
                         <AssigneePicker task={task} onClose={() => dispatch({ type: 'CLEAR_EDITING' })} />
                       ) : (
-                        <button type="button" onClick={() => dispatch({ type: 'EDIT_ASSIGNEE', value: task.id })}
+                        <button type="button" onClick={(e) => { e.stopPropagation(); dispatch({ type: 'EDIT_ASSIGNEE', value: task.id }) }}
                           className="flex items-center -space-x-1 hover:opacity-80 transition-opacity">
                           {team.length === 0 ? (
                             <span className="text-muted text-[12px]">—</span>
@@ -323,7 +323,7 @@ export default function TaskList({ tasks, setTasks, projects, profiles = [], loa
           const team = (task.assignee || []).flatMap((id: string) => { const u = profiles.find(m => m.id === id); return u ? [u] : [] })
           const subDone = (task.subtasks || []).filter((s: any) => s.d).length
           return (
-            <div key={task.id} className="bg-white border border-line rounded-lg p-4 space-y-3">
+            <div key={task.id} onClick={() => onOpenTask?.(task)} className="bg-white border border-line rounded-lg p-4 space-y-3 cursor-pointer">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">

@@ -16,6 +16,7 @@ import Learning from '@/components/learning';
 import TaskList from '@/components/tasks-list';
 import Calendar from '@/components/calendar';
 import TaskDetailView from '@/components/task-detail-view';
+import TaskDetailEnhanced from '@/components/task-detail-enhanced';
 
 const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile','list','calendar','task-detail'];
 
@@ -71,7 +72,9 @@ export default function HomePage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [prefsOpen, setPrefsOpen] = useState(false);
-  const [taskDetailTask, setTaskDetailTask] = useState<any>(null);
+  const [drawerTask, setDrawerTask] = useState<any>(null);
+  const [fullViewTask, setFullViewTask] = useState<any>(null);
+  const prevViewRef = useRef('kanban');
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifBtnRef = useRef<HTMLDivElement>(null);
 
@@ -159,9 +162,11 @@ export default function HomePage() {
         <div data-screen-label={view}>
           {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles} />}
           {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading}
-            onOpenFullView={(task: any) => { setTaskDetailTask(task); setView('task-detail') }} />}
-          {view === 'list'      && <TaskList tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading} />}
-          {view === 'calendar' && <Calendar tasks={tasks} setView={setView} />}
+            onOpenTask={(task: any) => setDrawerTask(task)} />}
+          {view === 'list'      && <TaskList tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading}
+            onOpenTask={(task: any) => setDrawerTask(task)} />}
+          {view === 'calendar' && <Calendar tasks={tasks} setView={setView}
+            onOpenTask={(task: any) => setDrawerTask(task)} />}
           {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles} />}
           {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles} />}
           {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} setTasks={setTasks} />}
@@ -170,16 +175,24 @@ export default function HomePage() {
             <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} profiles={profiles} />
           )}
           {view === 'profile' && <ProfileView tasks={tasks} projects={projects} />}
-          {view === 'task-detail' && taskDetailTask && (
+          {view === 'task-detail' && fullViewTask && (
             <TaskDetailView
-              task={tasks.find(t => t.id === taskDetailTask.id) || taskDetailTask}
+              task={fullViewTask}
               projects={projects}
               profiles={profiles}
-              onBack={() => { setTaskDetailTask(null); setView('kanban') }}
+              onBack={() => { setFullViewTask(null); setView(prevViewRef.current) }}
               onUpdate={(updated: any) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
             />
           )}
         </div>
+
+        <TaskDetailEnhanced
+          task={drawerTask}
+          open={!!drawerTask}
+          onClose={() => setDrawerTask(null)}
+          onUpdate={(updated: any) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
+          onOpenFullView={(task: any) => { prevViewRef.current = view; setFullViewTask(task); setView('task-detail') }}
+        />
       </main>
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} onNavigate={(v: string) => { if (VALID_VIEWS.includes(v)) setView(v) }}

@@ -45,7 +45,7 @@ const COLORS_BY_TAG: Record<string, string> = {
   qa: '#B91C22', planning: '#6B6B6B', feature: '#D72228',
 }
 
-export default function Calendar({ tasks: _tasks, setView }: any) {
+export default function Calendar({ tasks: _tasks, setView, onOpenTask }: any) {
   const today = new Date()
   const [events, setEvents] = useState(() => MOCK_EVENTS)
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
@@ -173,7 +173,7 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
                         draggable
                         onDragStart={(ev) => { ev.stopPropagation(); handleDragStart(ev, e.id) }}
                         onDragEnd={(ev) => { ev.stopPropagation(); handleDragEnd() }}
-                        onClick={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => { ev.stopPropagation(); onOpenTask?.(e) }}
                         className={`text-[10px] font-semibold truncate rounded px-1 py-0.5 text-white leading-tight transition-all ${
                           dragId === e.id ? 'opacity-30 scale-95' : ''
                         }`}
@@ -207,7 +207,7 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
               <div className="text-[13px] text-muted text-center py-8">Sin eventos este día</div>
             ) : (
               selectedEvents.map(e => (
-                <div key={e.id} className="rounded-md border border-line2 p-3 space-y-2 hover:shadow-soft transition-shadow">
+                <div key={e.id} onClick={() => onOpenTask?.(e)} className="rounded-md border border-line2 p-3 space-y-2 hover:shadow-soft transition-shadow cursor-pointer">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full" style={{ background: COLORS_BY_TAG[e.tag] || '#6B6B6B' }} />
                     <Tag tag={e.tag} />

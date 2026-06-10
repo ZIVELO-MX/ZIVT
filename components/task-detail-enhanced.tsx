@@ -54,7 +54,7 @@ function taskDetailReducer(state: any, action: any) {
   }
 }
 
-export default function TaskDetailEnhanced({ task, open, onClose, onUpdate }: any) {
+export default function TaskDetailEnhanced({ task, open, onClose, onUpdate, onOpenFullView }: any) {
   const [state, dispatch] = useReducer(taskDetailReducer, {
     edit: { ...(task || {}), description: task?.description || '', subtasks: task?.subtasks || [], attachments: task?.attachments || [] },
     saved: false,
@@ -93,6 +93,15 @@ export default function TaskDetailEnhanced({ task, open, onClose, onUpdate }: an
 
   return (
     <Drawer open={open} onClose={onClose} title={task.title || 'Detalle de tarea'} width={580}
+      headerEnd={onOpenFullView ? (
+        <button type="button" onClick={() => onOpenFullView(task)}
+          className="h-8 px-2.5 rounded-full hover:bg-soft inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted hover:text-carbon transition-colors">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          Abrir en vista completa
+        </button>
+      ) : undefined}
       footer={
         <div className="flex items-center justify-between gap-2">
           <Button variant="ghost" size="sm" onClick={onClose}>Cerrar</Button>
