@@ -192,3 +192,80 @@ export function Tag({ tag }: any) {
   const s = TAG_STYLES[tag] || { label: tag, cls: 'bg-soft text-carbon' }
   return <Badge className={s.cls}>{s.label}</Badge>
 }
+
+function SkeletonBar({ className = '' }: any) {
+  return <div className={`animate-pulse bg-line2 rounded ${className}`} />
+}
+
+export function Skeleton({ variant = 'text', count = 1, className = '' }: any) {
+  if (variant === 'text') {
+    return <SkeletonBar className={`h-4 w-full ${className}`} />
+  }
+  if (variant === 'avatar') {
+    return <SkeletonBar className={`size-9 rounded-full ${className}`} />
+  }
+  if (variant === 'card') {
+    return (
+      <div className={`bg-white border border-line rounded-lg p-4 space-y-3 ${className}`}>
+        <SkeletonBar className="h-3 w-1/3" />
+        <SkeletonBar className="h-5 w-3/4" />
+        <SkeletonBar className="h-3 w-1/2" />
+      </div>
+    )
+  }
+  if (variant === 'table-row') {
+    return (
+      <div className={`flex items-center gap-4 px-4 py-3 border-b border-line2 ${className}`}>
+        <SkeletonBar className="h-5 flex-1" />
+        <SkeletonBar className="h-5 w-24" />
+        <SkeletonBar className="h-5 w-20" />
+        <SkeletonBar className="h-5 w-20" />
+        <SkeletonBar className="h-5 w-16" />
+        <SkeletonBar className="h-5 w-24" />
+        <SkeletonBar className="h-5 w-20" />
+      </div>
+    )
+  }
+  if (variant === 'kanban-card') {
+    return (
+      <div className="bg-white border border-line2 rounded-md p-3.5 space-y-2.5">
+        <div className="flex items-center gap-2">
+          <SkeletonBar className="size-1.5 rounded-full" />
+          <SkeletonBar className="h-3 w-20" />
+        </div>
+        <SkeletonBar className="h-4 w-full" />
+        <SkeletonBar className="h-4 w-2/3" />
+        <div className="flex items-center justify-between">
+          <SkeletonBar className="h-3 w-16" />
+          <SkeletonBar className="size-6 rounded-full" />
+        </div>
+      </div>
+    )
+  }
+  if (variant === 'kanban-column') {
+    return (
+      <div className="w-[300px] shrink-0 space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <SkeletonBar className="size-2 rounded-full" />
+            <SkeletonBar className="h-4 w-24" />
+            <SkeletonBar className="h-5 w-7 rounded-full" />
+          </div>
+        </div>
+        {Array.from({ length: count }).map((_, i) => (
+          <Skeleton key={i} variant="kanban-card" />
+        ))}
+      </div>
+    )
+  }
+  if (variant === 'stat') {
+    return (
+      <div className="bg-white border border-line rounded-lg p-5 space-y-2">
+        <SkeletonBar className="h-3 w-24" />
+        <SkeletonBar className="h-8 w-16" />
+        <SkeletonBar className="h-3 w-32" />
+      </div>
+    )
+  }
+  return <SkeletonBar className={className} />
+}
