@@ -13,8 +13,9 @@ import Clients from '@/components/clients';
 import Users from '@/components/users';
 import ProfileView from '@/components/profile';
 import Learning from '@/components/learning';
+import TaskList from '@/components/tasks-list';
 
-const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile'];
+const VALID_VIEWS = ['dashboard','kanban','projects','clients','learning','users','settings','profile','list'];
 
 export default function HomePage() {
   const [view, setView] = useState('dashboard');
@@ -26,7 +27,7 @@ export default function HomePage() {
     try { localStorage.setItem('zivelo-view', view); } catch {}
   }, [view]);
 
-  const { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning } = useAppData();
+  const { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning, loading } = useAppData();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -153,12 +154,13 @@ export default function HomePage() {
         />
 
         <div data-screen-label={view}>
-          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles}/>}
-          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles}/>}
-          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles}/>}
-          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles}/>}
-          {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} setTasks={setTasks}/>}
-          {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles}/>}
+          {view === 'dashboard' && <Dashboard projects={projects} tasks={tasks} clients={clients} setView={setView} profiles={profiles} />}
+          {view === 'kanban'    && <Kanban    tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading} />}
+          {view === 'list'      && <TaskList tasks={tasks} setTasks={setTasks} projects={projects} profiles={profiles} loading={loading} />}
+          {view === 'learning'  && <Learning  tasks={learning} setTasks={setLearning} profiles={profiles} />}
+          {view === 'projects'  && <Projects  projects={projects} setProjects={setProjects} clients={clients} tasks={tasks} setTasks={setTasks} teams={teams} setTeams={setTeams} profiles={profiles} />}
+          {view === 'clients'   && <Clients   clients={clients} setClients={setClients} projects={projects} setProjects={setProjects} setTasks={setTasks} />}
+          {view === 'users'     && <Users tasks={tasks} projects={projects} teams={teams} setTeams={setTeams} users={profiles} setUsers={setProfiles} />}
           {view === 'settings' && (
             <SettingsView dark={dark} onToggleDark={() => setDark(d => !d)} density={density} setDensity={setDensity} profiles={profiles} />
           )}

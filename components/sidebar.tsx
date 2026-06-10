@@ -57,6 +57,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: <Ic.Dashboard width="18" height="18" /> },
     { id: 'kanban', label: 'Pendientes', icon: <Ic.Kanban width="18" height="18" />, badge: counts.tasks },
+    { id: 'list', label: 'Lista', icon: <Ic.List width="18" height="18" />, badge: counts.tasks },
     { id: 'learning', label: 'Aprendizaje', icon: <Ic.BookOpen width="18" height="18" /> },
     { id: 'projects', label: 'Proyectos', icon: <Ic.Folder width="18" height="18" />, badge: counts.activeProjects },
     !hideClients ? { id: 'clients', label: 'Clientes', icon: <Ic.Briefcase width="18" height="18" />, badge: counts.clients } : null,
@@ -190,6 +191,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
 const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   dashboard:   { t: 'Dashboard',      s: 'Resumen del workspace y métricas en vivo' },
   kanban:      { t: 'Pendientes',     s: 'Tablero kanban — arrastra tarjetas entre columnas' },
+  list:        { t: 'Lista',          s: 'Vista en tabla de todas las tareas' },
   projects:    { t: 'Proyectos',      s: 'Seguimiento de todos los proyectos activos' },
   clients:     { t: 'Clientes',       s: 'Cartera de clientes y prospectos' },
   users:       { t: 'Usuarios',       s: 'Equipo, permisos y miembros del workspace' },

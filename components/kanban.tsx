@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo, useRef, useReducer } from 'react'
 import { Ic } from '@/components/icons'
-import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag } from './ui'
+import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag, Skeleton } from './ui'
 import { CustomDatePicker as DatePicker, CustomSelect } from './controls'
 import { COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { ConfirmDialog, FiltersDrawer } from './modals'
 import { createTask, updateTask, deleteTask, moveTask } from '@/lib/supabase/queries'
 import { notifyTaskCompleted, notifyTaskCreated } from '@/lib/supabase/notify'
+import { ExportButton } from './export-modal'
 
 const PROG_COLOR: Record<string, string> = {
   todo:     '#D1D1CE',
@@ -144,7 +145,7 @@ function TaskCard({ task, projects, profiles = [], columns = [], onClick, onDrag
   );
 }
 
-function Column({ col, tasks, projects, profiles = [], columns = [], onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onSoon, onMoveCard }: any) {
+function Column({ col, tasks, projects, profiles = [], columns = [], onDrop, onDragOver, onDragLeave, isOver, onCardClick, onCardDragStart, onCardDragEnd, draggingId, onAdd, onRename, onClear, onArchive, onMoveCard }: any) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -223,7 +224,7 @@ function Column({ col, tasks, projects, profiles = [], columns = [], onDrop, onD
                 <button type="button" onClick={() => { setMenuOpen(false); onClear(col); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Trash width="13" height="13" className="text-muted"/> Limpiar tareas
                 </button>
-                <button type="button" onClick={() => { setMenuOpen(false); onSoon('Archivar columna estará disponible próximamente.'); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
+                <button type="button" onClick={() => { setMenuOpen(false); onArchive(col); }} className="w-full flex items-center gap-2 px-3 h-8 rounded text-[12.5px] hover:bg-soft text-left">
                   <Ic.Folder width="13" height="13" className="text-muted"/> Archivar columna
                 </button>
               </div>
@@ -609,7 +610,7 @@ function kanbanReducer(state: any, action: any) {
   }
 }
 
-export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any) {
+export default function Kanban({ tasks, setTasks, projects, profiles = [], loading }: any) {
   const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(kanbanReducer, null, () => ({
     ...KANBAN_INIT,
@@ -664,6 +665,19 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
     const snapshot = taskListRef.current;
     const task = snapshot.find(t => t.id === id);
     if (!task) return;
+    dispatch({ type: 'SET_DRAGGING', value: null }); dispatch({ type: 'SET_OVER_COL', value: null });
+    const sameCol = task.col === colId;
+    if (sameCol) {
+      const colTasks = filtered.filter(t => t.col === colId && t.id !== id);
+      const targetIndex = Math.floor((e.clientY - e.currentTarget.getBoundingClientRect().top) / 80);
+      const insertAt = Math.max(0, Math.min(targetIndex, colTasks.length));
+      const reordered = [...colTasks.slice(0, insertAt), task, ...colTasks.slice(insertAt)];
+      setTasks(prev => {
+        const other = prev.filter(t => t.col !== colId);
+        return [...other, ...reordered];
+      });
+      return;
+    }
     setTasks(prev => prev.map(t => {
       if (t.id !== id) return t;
       if (colId === 'done') {
@@ -673,7 +687,6 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
       }
       return { ...t, col: colId };
     }));
-    dispatch({ type: 'SET_DRAGGING', value: null }); dispatch({ type: 'SET_OVER_COL', value: null });
     const progress = colId === 'done'
       ? Object.fromEntries(task.assignee.map(uid => [uid, 'done' as const]))
       : undefined;
@@ -719,6 +732,20 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
     dispatch({ type: 'ADD_COMMENT', taskId, text, userId: currentUser?.id ?? '' });
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: (t.comments || 0) + 1 } : t));
   }
+  async function archiveColumn(col: any) {
+    const snapshot = taskListRef.current;
+    const colTasks = snapshot.filter(t => t.col === col.id);
+    if (colTasks.length === 0) { showToast('No hay tareas que archivar.'); return; }
+    setTasks(prev => prev.map(t => t.col === col.id ? { ...t, col: 'done' } : t));
+    try {
+      await Promise.all(colTasks.map(t => moveTask(t.id, 'done', Object.fromEntries(t.assignee.map(uid => [uid, 'done' as const])))));
+      showToast(`Columna ${col.title} archivada (${colTasks.length} tareas).`);
+    } catch {
+      setTasks(snapshot);
+      showToast('Error al archivar la columna');
+    }
+  }
+
   function renameColumn(id: string, title: string) {
     dispatch({ type: 'RENAME_COLUMN', id, title });
   }
@@ -743,6 +770,20 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
     }
   }
   const columns = COLUMNS.map(col => ({ ...col, title: state.columnTitles[col.id] || col.title }));
+
+  if (loading) {
+    return (
+      <div className="px-4 md:px-8 py-4 md:py-6 flex flex-col" style={{minHeight:'calc(100vh - 72px)'}}>
+        <div className="flex items-center gap-3 mb-4">
+          <Skeleton variant="text" className="h-10 w-72 !rounded-full" />
+          <Skeleton variant="text" className="h-10 w-96 !rounded-full" />
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 md:-mx-8 px-4 md:px-8">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} variant="kanban-column" count={3} />)}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 md:px-8 py-4 md:py-6 flex flex-col" style={{minHeight:'calc(100vh - 72px)'}}>
@@ -780,6 +821,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
           <Ic.Filter width="14" height="14"/> Filtros
           {activeFilterCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-zred text-white text-[10.5px] font-bold nums">{activeFilterCount}</span>}
         </Button>
+        <ExportButton data={filtered} projects={projects} profiles={profiles} filename="tareas-kanban" viewName="tareas (Kanban)" />
         <Button variant="primary" size="md" onClick={() => dispatch({ type: 'OPEN_NEW_TASK', col: 'todo' })}>
           <Ic.Plus width="15" height="15"/> Nueva tarea
         </Button>
@@ -806,7 +848,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [] }: any
             onAdd={(colId: string) => dispatch({ type: 'OPEN_NEW_TASK', col: colId })}
             onRename={renameColumn}
             onClear={(col: any) => dispatch({ type: 'SET_CONFIRM_CLEAR', value: col })}
-            onSoon={showToast}
+            onArchive={archiveColumn}
           />
         ))}
       </div>

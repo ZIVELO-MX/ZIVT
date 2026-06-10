@@ -89,17 +89,21 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Flujo de invitación al equipo (requiere service-role key o Edge Function — ver Pendientes bloqueados)
 
 **Producto**
-- [ ] Vista lista/tabla de tareas
+- [x] **Vista lista/tabla de tareas** — implementada en PR #12: `components/tasks-list.tsx` con columnas sortables, edición inline de estado/asignados, vista mobile en cards
 - [ ] Vista calendario
-- [ ] Export CSV/JSON (botón de clientes existe sin handler; tareas ni eso)
-- [ ] Import CSV/JSON
+- [x] **Export CSV/JSON** — modal unificado con toggle CSV↔JSON, preview de primeras 10 filas, Descargar y Copiar; disponible en Kanban y Lista
+- [ ] Import CSV/JSON (UI con textarea para pegar + validación de formato lista, falta import real a Supabase)
 - [ ] Campos financieros en tareas, gastos, pagos, reportes
-- [ ] Búsqueda y filtros fuera del Kanban
+- [x] **Búsqueda y filtros fuera del Kanban** — FiltersDrawer reutilizado en Lista (tags, prioridad, vencimiento, asignados, orden)
+- [ ] **Renombrar columnas del Kanban** — permitir al usuario cambiar los nombres de las columnas (todo, progress, review, done, blocked) desde la UI
 
 **UX** (inventario completo en `BOTONES-SIN-FUNCIONALIDAD.md` — 28 elementos sin handler)
 - [ ] Guardar cambios en TaskDetail no persiste; subtareas y comentarios no se pueden crear
 - [ ] Menús contextuales `⋯` de columnas y proyectos vacíos
 - [ ] Invitar al equipo, Configuración, ítems del menú de usuario sin acción
+- [x] **Skeleton / loading states** — implementado en Kanban y TaskList (PR #12); componente `<Skeleton>` con 7 variantes; `useAppData` expone `loading`
+- [x] **Botón "Prompt IA"** — en el modal Exportar/Importar, pestaña Prompt IA: selector de proyecto + `project_id` en schema, instrucción editable, copia prompt en inglés con contexto realista
+- [ ] **Estilo de dropdowns y animaciones** — los `<select>` del modal Exportar y filtros no tienen estilo coherente; falta animación suave en botones (hover, active, toggle) en toda la app
 
 **Datos**
 - [ ] Sin tabla de tags (hoy `tag` es un string suelto en task)
@@ -362,3 +366,64 @@ Zoho OAuth nativo · adjuntos en Supabase Storage · integración lectura con he
 | Flujo de reset de contraseña | Requiere página `/auth/reset` + configurar redirect URL en Supabase | Decisión de UX + acceso a config de Supabase Auth |
 | Prueba de RLS por rol | Requiere crear usuarios de prueba en el proyecto Supabase real | Acceso a Supabase Studio |
 | Verificación del deploy | Requiere acceso al dashboard de Vercel | Acceso al proyecto en Vercel |
+| Skeleton / loading states audit | Varias vistas cargan sin feedback visual | Ver sección 13 |
+
+## 13. Auditoría de skeleton / loading states
+
+**Regla:** Todo componente que carga datos desde Supabase debe mostrar un estado de carga (skeleton) antes de que los datos lleguen. Sin excepción. Componentes nuevos deben incluir skeleton desde su creación.
+
+### Estado actual por vista
+
+| Vista / componente | Tiene skeleton? | Notas |
+|---|---|---|
+| `Dashboard` (dashboard.tsx) | ❌ | Carga de golpe, sin placeholder |
+| `Kanban` (kanban.tsx) | ❌ | Muestra columnas vacías hasta que llegan datos |
+| `TaskList` (tasks-list.tsx) | ❌ | Nueva — debe tener skeleton desde inicio |
+| `Projects` (projects.tsx) | ❌ | Sin skeleton |
+| `Clients` (clients.tsx) | ❌ | Sin skeleton |
+| `Users` (users.tsx) | ❌ | Sin skeleton |
+| `Settings` (settings.tsx) | ❌ | Sin skeleton |
+| `Profile` (profile.tsx) | ❌ | Sin skeleton |
+| `Learning` (learning.tsx) | ❌ | Sin skeleton |
+| `Login` (login/page.tsx) | ❌ | Botón submit sin estado "enviando" |
+| Sidebar / Topbar | ❌ | Avatar de usuario sin skeleton |
+| NotificationsDrawer | ❌ | Sin skeleton |
+| TaskDetail | ❌ | Drawer sin skeleton mientras carga comments |
+| CommandPalette | ❌ | Sin skeleton en resultados de búsqueda |
+
+### Implementación
+
+- Crear componente `Skeleton` reutilizable en `components/ui.tsx` (variantes: `text`, `avatar`, `card`, `table-row`, `kanban-card`)
+- Cada vista envuelve su contenido en un conditional: `if (loading) return <Skeleton variant="..." />`
+- Usar animación `pulse` de Tailwind (ya existe en el código como `animate-pulse`)
+- Prioridad: Kanban, TaskList, Dashboard → Clients, Projects, Users → resto
+
+## 14. Botón "Copiar prompt IA"
+
+**Propósito:** Que el usuario pueda copiar al portapapeles un prompt descriptivo del formato de datos que exporta, para pegarlo en una IA (Claude, GPT, etc.) y recibir código/scripts que procesen esos datos correctamente.
+
+### Ubicación
+- Botón junto a los botones de export CSV/JSON en TaskList y Clients
+- `📋 Copiar prompt IA`
+
+### Formato del prompt copiado
+```
+Exporté {n} registros de {vista} desde Zivelo Panel.
+El formato es {CSV|JSON} con estas columnas/tipos:
+{lista de campos con tipos}
+
+Necesito que {descripción de lo que debe hacer la IA con estos datos},
+respetando exactamente estos nombres de campo y tipos.
+Devuelve solo el código/script listo para ejecutar, sin explicaciones.
+```
+
+### Implementación técnica
+- Botón que abre un pequeño modal/drawer con:
+  - Selector de formato: CSV | JSON
+  - Textarea para la instrucción (ej: "genera un gráfico de barras", "calcula totales por proyecto", "transforma a SQL INSERT")
+  - Botón "Copiar prompt" que genera el texto completo, lo copia al portapapeles y muestra feedback visual "✓ Copiado"
+- El prompt generado incluye:
+  - Metadatos: nº de registros, vista de origen, fecha de exportación
+  - Schema: lista de campos con tipo de dato (string, number, date, etc.)
+  - Instrucción del usuario
+  - Ejemplo de 2 filas reales para contexto

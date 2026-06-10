@@ -30,6 +30,7 @@ export type AppData = {
   setTeams: React.Dispatch<React.SetStateAction<any[]>>
   learning:    LearningTask[]
   setLearning: React.Dispatch<React.SetStateAction<LearningTask[]>>
+  loading: boolean
 }
 
 export function useAppData(): AppData {
@@ -40,14 +41,17 @@ export function useAppData(): AppData {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [teams,         setTeams]         = useState<any[]>([])
   const [learning,      setLearning]      = useState<LearningTask[]>([])
+  const [loading,       setLoading]       = useState(true)
 
   useEffect(() => {
-    getProjects().then(setProjects)
-    getTasks().then(setTasks)
-    getClients().then(setClients)
-    getProfiles().then(setProfiles)
-    getNotifications().then(setNotifications)
-    getLearningTasks().then(setLearning)
+    Promise.all([
+      getProjects().then(setProjects),
+      getTasks().then(setTasks),
+      getClients().then(setClients),
+      getProfiles().then(setProfiles),
+      getNotifications().then(setNotifications),
+      getLearningTasks().then(setLearning),
+    ]).finally(() => setLoading(false))
 
     const supabase = createClient()
     const channel = supabase
@@ -63,5 +67,5 @@ export function useAppData(): AppData {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  return { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning }
+  return { tasks, setTasks, projects, setProjects, clients, setClients, profiles, setProfiles, notifications, setNotifications, teams, setTeams, learning, setLearning, loading }
 }
