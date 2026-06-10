@@ -195,7 +195,10 @@ export default function TaskDetailEnhanced({ task, open, onClose, onUpdate, onOp
               <button type="button" key={t.id}
                 onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: t.id })}
                 className={`inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all ${state.activeTab === t.id ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
-                <Ic.Edit width="13" height="13" />
+                {t.icon === 'Edit' && <Ic.Edit width="13" height="13" />}
+                {t.icon === 'Check' && <Ic.Check width="13" height="13" />}
+                {t.icon === 'Chat' && <Ic.Chat width="13" height="13" />}
+                {t.icon === 'Folder' && <Ic.Folder width="13" height="13" />}
                 {t.label}
               </button>
             ))}
