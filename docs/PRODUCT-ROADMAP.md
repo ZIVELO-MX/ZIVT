@@ -95,6 +95,7 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Import CSV/JSON (UI con textarea para pegar + validación de formato lista, falta import real a Supabase)
 - [ ] Campos financieros en tareas, gastos, pagos, reportes
 - [x] **Búsqueda y filtros fuera del Kanban** — FiltersDrawer reutilizado en Lista (tags, prioridad, vencimiento, asignados, orden)
+- [ ] **Renombrar columnas del Kanban** — permitir al usuario cambiar los nombres de las columnas (todo, progress, review, done, blocked) desde la UI
 
 **UX** (inventario completo en `BOTONES-SIN-FUNCIONALIDAD.md` — 28 elementos sin handler)
 - [ ] Guardar cambios en TaskDetail no persiste; subtareas y comentarios no se pueden crear
