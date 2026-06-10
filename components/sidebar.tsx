@@ -48,7 +48,7 @@ export function NavItem({ icon, label, active, badge, onClick, collapsed }: any)
   )
 }
 
-export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [] }: any) {
+export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onToggle, onInvite, onSettings, mobileOpen, onMobileClose, profiles = [], activeView }: any) {
   const [mobile, setMobile] = useState(true)
   useEffect(() => { setMobile(window.innerWidth < 768) }, [])
   const collapsed = mobile ? false : collapsedProp
@@ -58,6 +58,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
     { id: 'dashboard', label: 'Dashboard', icon: <Ic.Dashboard width="18" height="18" /> },
     { id: 'kanban', label: 'Pendientes', icon: <Ic.Kanban width="18" height="18" />, badge: counts.tasks },
     { id: 'list', label: 'Lista', icon: <Ic.List width="18" height="18" />, badge: counts.tasks },
+    { id: 'calendar', label: 'Calendario', icon: <Ic.Calendar width="18" height="18" /> },
     { id: 'learning', label: 'Aprendizaje', icon: <Ic.BookOpen width="18" height="18" /> },
     { id: 'projects', label: 'Proyectos', icon: <Ic.Folder width="18" height="18" />, badge: counts.activeProjects },
     !hideClients ? { id: 'clients', label: 'Clientes', icon: <Ic.Briefcase width="18" height="18" />, badge: counts.clients } : null,
@@ -122,7 +123,7 @@ export function Sidebar({ view, setView, counts, collapsed: collapsedProp, onTog
               key={it.id}
               icon={it.icon}
               label={it.label}
-              active={view === it.id}
+              active={(activeView || view) === it.id}
               badge={it.badge}
               collapsed={collapsed}
               onClick={() => handleNav(it.id)}
@@ -198,9 +199,11 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   settings:    { t: 'Configuración',  s: 'Gestiona tu cuenta, apariencia y equipo' },
   profile:     { t: 'Mi perfil',      s: 'Información de tu cuenta' },
   learning:    { t: 'Aprendizaje',    s: 'Materiales de estudio y desarrollo del equipo' },
+  calendar:    { t: 'Calendario',     s: 'Vista de calendario con eventos y tareas' },
+  'task-detail': { t: 'Detalle de tarea', s: 'Vista completa de la tarea' },
 }
 
-export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu }: any) {
+export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu, sectionLabel }: any) {
   const cur = TOPBAR_TITLES[view] ?? { t: view, s: '' }
   const currentUser = useCurrentProfile()
 
@@ -223,9 +226,17 @@ export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, user
           <div className="hidden md:flex items-center gap-2 text-[12px] text-muted mb-0.5">
             <span>Zivelo</span>
             <span>›</span>
-            <span className="text-carbon font-medium">{cur.t}</span>
+            {view === 'task-detail' && sectionLabel ? (
+              <>
+                <span className="text-carbon font-medium">{sectionLabel}</span>
+                <span>›</span>
+                <span className="text-carbon font-medium">Detalle de tarea</span>
+              </>
+            ) : (
+              <span className="text-carbon font-medium">{cur.t}</span>
+            )}
           </div>
-          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{cur.t}</h1>
+          <h1 className="text-[18px] md:text-[20px] font-bold tracking-tight leading-tight">{view === 'task-detail' ? 'Detalle de tarea' : cur.t}</h1>
         </div>
 
         <button type="button" onClick={onOpenCommand}

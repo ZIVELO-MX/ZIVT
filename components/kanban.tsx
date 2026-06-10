@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useMemo, useRef, useReducer } from 'react'
 import { Ic } from '@/components/icons'
-import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag, Skeleton } from './ui'
+import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Modal, ProgressBar, Tag, Skeleton } from './ui'
 import { CustomDatePicker as DatePicker, CustomSelect } from './controls'
 import { COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { ConfirmDialog, FiltersDrawer } from './modals'
-import { createTask, updateTask, deleteTask, moveTask } from '@/lib/supabase/queries'
+import { createTask, deleteTask, moveTask } from '@/lib/supabase/queries'
 import { notifyTaskCompleted, notifyTaskCreated } from '@/lib/supabase/notify'
 import { ExportButton } from './export-modal'
 
@@ -266,249 +266,6 @@ function Column({ col, tasks, projects, profiles = [], columns = [], onDrop, onD
   );
 }
 
-function taskDetailReducer(state: any, action: any) {
-  switch (action.type) {
-    case 'SET_FIELD':
-      return { ...state, edit: { ...state.edit, [action.key]: action.value } };
-    case 'SET_SAVED':
-      return { ...state, saved: action.value };
-    case 'SET_NEW_SUBTASK':
-      return { ...state, newSubtask: action.value };
-    case 'SET_NEW_COMMENT':
-      return { ...state, newComment: action.value };
-    case 'SET_EDITING_SUB':
-      return { ...state, editingSub: action.value };
-    case 'TOGGLE_SUB':
-      const subs = state.edit.subtasks.map((s: any, i: number) => i === action.idx ? { ...s, d: !s.d } : s);
-      return { ...state, edit: { ...state.edit, subtasks: subs } };
-    case 'ADD_SUBTASK':
-      return {
-        ...state,
-        edit: { ...state.edit, subtasks: [...state.edit.subtasks, { t: action.text.trim(), d: false }] },
-        newSubtask: '',
-        editingSub: false,
-      };
-    default:
-      return state;
-  }
-}
-
-function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete, comments, onAddComment }: any) {
-  const currentUser = useCurrentProfile()
-  const [state, dispatch] = useReducer(taskDetailReducer, {
-    edit: { ...(task || {}), description: task?.description || '' },
-    saved: false,
-    newSubtask: '',
-    newComment: '',
-    editingSub: false,
-  });
-  if (!task) return null;
-  const project = projects.find(p => p.id === task.project);
-
-  function save() {
-    const prog = state.edit.progress || {};
-    const allDone = state.edit.assignee?.length > 0 && state.edit.assignee.every((id: string) => prog[id] === 'done');
-    onUpdate({ ...state.edit, comments: task.comments, ...(allDone ? { col: 'done' } : {}) });
-    dispatch({ type: 'SET_SAVED', value: true });
-    setTimeout(() => dispatch({ type: 'SET_SAVED', value: false }), 1500);
-  }
-
-  function toggleSub(idx: number) {
-    dispatch({ type: 'TOGGLE_SUB', idx });
-  }
-
-  function addSubtask() {
-    if (!state.newSubtask.trim()) return;
-    dispatch({ type: 'ADD_SUBTASK', text: state.newSubtask });
-  }
-
-  function handleCommentSubmit(e: any) {
-    if (e) e.preventDefault();
-    if (!state.newComment.trim()) return;
-    onAddComment(task.id, state.newComment.trim());
-    dispatch({ type: 'SET_NEW_COMMENT', value: '' });
-  }
-
-  return (
-    <Drawer open onClose={onClose} title="Detalle de tarea" width={520}
-      footer={
-        <div className="flex items-center justify-between gap-2">
-          <Button variant="danger" size="sm" onClick={() => { onDelete(task.id); onClose(); }}>
-            <Ic.Trash width="14" height="14"/> Eliminar
-          </Button>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={onClose}>Cerrar</Button>
-            <Button variant="primary" size="sm" onClick={save}>
-              {state.saved ? 'Guardado ✓' : 'Guardar cambios'}
-            </Button>
-          </div>
-        </div>
-      }>
-      <div className="px-6 py-5 space-y-5">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="size-2 rounded-full" style={{background: project?.accent || '#1D1D1B'}}/>
-          <span className="text-[12px] font-semibold text-muted">{project?.name}</span>
-          <Tag tag={task.tag} />
-        </div>
-
-        <input value={state.edit.title} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'title', value: e.target.value })}
-          aria-label="Título de la tarea"
-          className="w-full text-[20px] font-bold tracking-tight leading-snug bg-transparent border-b border-transparent hover:border-line focus:border-zred outline-none transition-colors" />
-
-        <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-[13px]">
-          <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Estado</div>
-            <select value={state.edit.col} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'col', value: e.target.value })}
-              className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white">
-              {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Prioridad</div>
-            <select value={state.edit.priority} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'priority', value: e.target.value })}
-              className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white">
-              {Object.entries(PRIORITY).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Vencimiento</div>
-            <input type="date" value={state.edit.due || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'due', value: e.target.value || null })}
-              aria-label="Fecha de vencimiento"
-              className="w-full h-9 px-2.5 rounded-md border border-line text-[13px] bg-white" />
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Asignados</div>
-            <div className="flex flex-wrap gap-1">
-              {profiles.map(u => {
-                const on = state.edit.assignee?.includes(u.id);
-                return (
-                  <button key={u.id} type="button" onClick={() => dispatch({ type: 'SET_FIELD', key: 'assignee', value: on ? state.edit.assignee.filter((x: string) => x !== u.id) : [...(state.edit.assignee || []), u.id] })}
-                    className={`size-7 rounded-full text-[10px] font-bold text-white transition-all ${on ? 'ring-2 ring-offset-1 ring-zred scale-110' : 'opacity-50 hover:opacity-100'}`}
-                    style={{background: u.color}} title={u.name}>
-                    {u.initials}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {state.edit.assignee?.length > 0 && (
-          <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Progreso por persona</div>
-            <div className="space-y-2">
-              {state.edit.assignee.map((uid: string) => {
-                const u = profiles.find(m => m.id === uid);
-                if (!u) return null;
-                const status = state.edit.progress?.[uid] || 'todo';
-                return (
-                  <div key={uid} className="flex items-center gap-3">
-                    <Avatar user={u} size={28} />
-                    <span className="text-[13px] font-medium flex-1 min-w-0 truncate">{u.name.split(' ')[0]}</span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {PROG_STATUS.map(s => (
-                        <button type="button" key={s.value} onClick={() => dispatch({ type: 'SET_FIELD', key: 'progress', value: { ...(state.edit.progress || {}), [uid]: s.value } })}
-                          title={s.label}
-                          className={`px-2.5 h-7 rounded-full text-[11px] font-semibold border transition-all ${
-                            status === s.value ? 'text-white border-transparent' : 'bg-white border-line text-muted hover:border-line2'
-                          }`}
-                          style={status === s.value ? { background: s.color, borderColor: s.color } : undefined}>
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Subtareas</div>
-            {!state.editingSub && (
-              <button type="button" onClick={() => dispatch({ type: 'SET_EDITING_SUB', value: true })} className="text-[12px] font-semibold text-zred hover:underline">+ Añadir</button>
-            )}
-          </div>
-          {state.editingSub && (
-            <div className="flex items-center gap-2 mb-2">
-              <input value={state.newSubtask} onChange={(e) => dispatch({ type: 'SET_NEW_SUBTASK', value: e.target.value })}
-                onKeyDown={(e) => (e as any).key === 'Enter' && addSubtask()}
-                placeholder="Nombre de la subtarea..."
-                aria-label="Nueva subtarea"
-                className="flex-1 h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
-              <button type="button" onClick={addSubtask} className="size-9 rounded-md bg-zred text-white flex items-center justify-center hover:bg-zred2 transition-colors" aria-label="Confirmar subtarea">
-                <Ic.Check width="14" height="14"/>
-              </button>
-              <button type="button" onClick={() => { dispatch({ type: 'SET_EDITING_SUB', value: false }); dispatch({ type: 'SET_NEW_SUBTASK', value: '' }); }} className="size-9 rounded-md border border-line flex items-center justify-center text-muted hover:text-carbon" aria-label="Cancelar">
-                <Ic.X width="14" height="14"/>
-              </button>
-            </div>
-          )}
-          {state.edit.subtasks.length === 0 ? (
-            <div className="text-[13px] text-muted">Sin subtareas aún.</div>
-          ) : (
-            <div className="space-y-1">
-              {state.edit.subtasks.map((s: any, i: number) => (
-                <button type="button" key={`${s.t}-${i}`} onClick={() => toggleSub(i)} className="w-full flex items-center gap-3 p-2 rounded hover:bg-soft text-left">
-                  <span className={`size-[18px] rounded border flex items-center justify-center transition-colors ${s.d ? 'bg-zred border-zred text-white' : 'border-line bg-white'}`}>
-                    {s.d && <Ic.Check width="12" height="12"/>}
-                  </span>
-                  <span className={`text-[13.5px] ${s.d ? 'line-through text-muted' : 'text-carbon'}`}>{s.t}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Descripción</div>
-          <textarea value={state.edit.description || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'description', value: e.target.value })}
-            placeholder="Especifica los criterios de aceptación, mockups relevantes y dependencias técnicas."
-            aria-label="Descripción de la tarea"
-            className="w-full rounded-md border border-line2 p-3 text-[13.5px] text-carbon leading-relaxed bg-transparent resize-none min-h-[100px]" />
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Comentarios</div>
-          <div className="space-y-3 text-[13px] mb-3">
-            {comments.map(c => {
-              const user = profiles.find(u => u.id === c.userId);
-              return (
-                <div key={c.id} className="flex items-start gap-3">
-                  <Avatar user={user} size={26}/>
-                  <div className="flex-1 bg-soft rounded-md p-3">
-                    <div className="text-[12px] text-muted mb-1">
-                      <span className="font-semibold text-carbon">{user?.name?.split(' ')[0]}</span>
-                      {' · '}{new Date(c.timestamp).toLocaleDateString('es-MX', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})}
-                    </div>
-                    <div>{c.text}</div>
-                  </div>
-                </div>
-              );
-            })}
-            {comments.length === 0 && (
-              <div className="text-[13px] text-muted text-center py-4">Sin comentarios aún.</div>
-            )}
-          </div>
-          <form onSubmit={handleCommentSubmit} className="flex items-center gap-2">
-            <Avatar user={currentUser} size={28}/>
-            <input value={state.newComment} onChange={(e) => dispatch({ type: 'SET_NEW_COMMENT', value: e.target.value })}
-              placeholder="Escribe un comentario..."
-              aria-label="Nuevo comentario"
-              className="flex-1 h-10 px-3.5 rounded-full bg-soft border border-transparent text-[13px] outline-none focus:border-zred/30" />
-            <button type="submit" disabled={!state.newComment.trim()}
-              className="size-10 rounded-full bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors" aria-label="Enviar comentario">
-              <Ic.Arrow width="14" height="14"/>
-            </button>
-          </form>
-        </div>
-      </div>
-    </Drawer>
-  );
-}
-
 function NewTaskModal({ open, defaultCol, projects, profiles = [], onClose, onCreate }: any) {
   const [form, setForm] = useState({ title:'', project: projects[0]?.id, priority:'med', col: defaultCol || 'todo', tag:'feature', due:'', assignee: [] as string[] });
 
@@ -574,14 +331,12 @@ const KANBAN_INIT = {
   projectFilter: 'all',
   draggingId: null,
   overCol: null,
-  openTask: null,
   newTaskOpen: false,
   newTaskCol: 'todo',
   openCount: 0,
   filtersOpen: false,
   filters: { assignees: [] as string[], tags: [] as string[], priorities: [] as string[], due: 'all', sort: 'recent' as string },
   draft: { assignees: [] as string[], tags: [] as string[], priorities: [] as string[], due: 'all', sort: 'recent' as string },
-  taskComments: {} as Record<string, any[]>,
   columnTitles: null as Record<string, string> | null,
   confirmClear: null,
   toast: '',
@@ -593,16 +348,11 @@ function kanbanReducer(state: any, action: any) {
     case 'SET_PROJECT_FILTER': return { ...state, projectFilter: action.value };
     case 'SET_DRAGGING': return { ...state, draggingId: action.value };
     case 'SET_OVER_COL': return { ...state, overCol: action.value };
-    case 'OPEN_TASK': return { ...state, openTask: action.value };
-    case 'CLOSE_TASK': return { ...state, openTask: null };
     case 'OPEN_NEW_TASK': return { ...state, newTaskOpen: true, newTaskCol: action.col, openCount: state.openCount + 1 };
     case 'CLOSE_NEW_TASK': return { ...state, newTaskOpen: false };
     case 'SET_FILTERS_OPEN': return { ...state, filtersOpen: action.value };
     case 'SET_FILTERS': return { ...state, filters: action.value };
     case 'SET_DRAFT': return { ...state, draft: action.value };
-    case 'ADD_COMMENT':
-      const comment = { id: 'c' + Date.now(), text: action.text, userId: action.userId, timestamp: new Date().toISOString() };
-      return { ...state, taskComments: { ...state.taskComments, [action.taskId]: [...(state.taskComments[action.taskId] || []), comment] } };
     case 'RENAME_COLUMN': return { ...state, columnTitles: { ...state.columnTitles, [action.id]: action.title } };
     case 'SET_CONFIRM_CLEAR': return { ...state, confirmClear: action.value };
     case 'SET_TOAST': return { ...state, toast: action.value };
@@ -610,7 +360,7 @@ function kanbanReducer(state: any, action: any) {
   }
 }
 
-export default function Kanban({ tasks, setTasks, projects, profiles = [], loading }: any) {
+export default function Kanban({ tasks, setTasks, projects, profiles = [], loading, onOpenTask }: any) {
   const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(kanbanReducer, null, () => ({
     ...KANBAN_INIT,
@@ -728,10 +478,6 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [], loadi
       });
   }
 
-  function onAddComment(taskId: string, text: string) {
-    dispatch({ type: 'ADD_COMMENT', taskId, text, userId: currentUser?.id ?? '' });
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: (t.comments || 0) + 1 } : t));
-  }
   async function archiveColumn(col: any) {
     const snapshot = taskListRef.current;
     const colTasks = snapshot.filter(t => t.col === col.id);
@@ -841,7 +587,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [], loadi
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            onCardClick={(task: any) => dispatch({ type: 'OPEN_TASK', value: task })}
+            onCardClick={(task: any) => onOpenTask?.(task)}
             onCardDragStart={onDragStart}
             onCardDragEnd={onDragEnd}
             onMoveCard={onMoveCard}
@@ -864,40 +610,6 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [], loadi
         <div>{filtered.length} de {tasks.length} tareas visibles</div>
       </div>
 
-      {state.openTask && (
-        <TaskDetail key={state.openTask.id}
-          task={tasks.find(t => t.id === state.openTask.id)}
-          projects={projects}
-          profiles={profiles}
-          onClose={() => dispatch({ type: 'CLOSE_TASK' })}
-          onUpdate={async (t) => {
-            const snapshot = taskListRef.current;
-            const previous = snapshot.find(x => x.id === t.id);
-            setTasks(prev => prev.map(x => x.id === t.id ? t : x));
-            try {
-              await updateTask(t.id, t);
-              if (previous?.col !== 'done' && t.col === 'done') {
-                notifyTaskCompleted(t.title, currentUser?.id ?? '');
-              }
-            } catch {
-              setTasks(snapshot);
-              showToast('Error al guardar la tarea');
-            }
-          }}
-          onDelete={async (id) => {
-            const snapshot = taskListRef.current;
-            setTasks(prev => prev.filter(x => x.id !== id));
-            try {
-              await deleteTask(id);
-            } catch {
-              setTasks(snapshot);
-              showToast('Error al eliminar la tarea');
-            }
-          }}
-          comments={state.taskComments[state.openTask.id] || []}
-          onAddComment={onAddComment}
-        />
-      )}
       <NewTaskModal
         key={state.openCount}
         open={state.newTaskOpen}
