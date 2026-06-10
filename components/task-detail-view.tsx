@@ -6,15 +6,6 @@ import { Button, Avatar, Tag } from '@/components/ui'
 import { COLUMNS, PRIORITY } from '@/lib/constants'
 import { MOCK_PROFILES } from '@/lib/mock-roadmap'
 
-type DetailTab = 'description' | 'subtasks' | 'comments' | 'attachments'
-
-const TABS: { id: DetailTab; label: string; icon: keyof typeof Ic }[] = [
-  { id: 'description', label: 'Descripción', icon: 'Edit' },
-  { id: 'subtasks', label: 'Subtareas', icon: 'Check' },
-  { id: 'comments', label: 'Comentarios', icon: 'Chat' },
-  { id: 'attachments', label: 'Adjuntos', icon: 'Folder' },
-]
-
 const PROG_STATUS = [
   { value: 'todo', label: 'Por hacer', color: '#A1A1A1' },
   { value: 'progress', label: 'En curso', color: '#E0A800' },
@@ -38,8 +29,6 @@ function taskDetailReducer(state: any, action: any) {
       return { ...state, edit: { ...state.edit, subtasks: subs } }
     case 'ADD_SUBTASK':
       return { ...state, edit: { ...state.edit, subtasks: [...(state.edit.subtasks || []), { t: action.text.trim(), d: false }] }, newSubtask: '', editingSub: false }
-    case 'SET_ACTIVE_TAB':
-      return { ...state, activeTab: action.tab }
     case 'SET_NEW_ATTACHMENT':
       return { ...state, newAttachment: action.value }
     case 'SET_NEW_ATTACHMENT_LABEL':
@@ -58,7 +47,6 @@ export default function TaskDetailView({ task, projects, profiles: _profiles, on
   const [state, dispatch] = useReducer(taskDetailReducer, {
     edit: { ...(task || {}), description: task?.description || '', subtasks: task?.subtasks || [], attachments: task?.attachments || [] },
     saved: false,
-    activeTab: 'description' as DetailTab,
     newSubtask: '',
     newComment: '',
     newAttachment: '',
@@ -89,8 +77,6 @@ export default function TaskDetailView({ task, projects, profiles: _profiles, on
     if (!state.newAttachment.trim()) return
     dispatch({ type: 'ADD_ATTACHMENT', label: state.newAttachmentLabel.trim() || state.newAttachment.trim(), url: state.newAttachment.trim() })
   }
-
-  const activeTab = state.activeTab
 
   return (
     <div className="flex flex-col h-[calc(100vh-72px)]">
@@ -202,143 +188,128 @@ export default function TaskDetailView({ task, projects, profiles: _profiles, on
             </div>
           )}
 
-          <div className="flex items-center gap-1 bg-soft rounded-full p-1 w-fit">
-            {TABS.map(t => (
-              <button type="button" key={t.id}
-                onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', tab: t.id })}
-                className={`inline-flex items-center gap-1.5 px-4 h-8 rounded-full text-[12.5px] font-semibold transition-all ${activeTab === t.id ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
-                <Ic.Edit width="13" height="13" />
-                {t.label}
-              </button>
-            ))}
+          {/* Descripción */}
+          <div>
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1.5">Descripción</div>
+            <textarea value={state.edit.description || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'description', value: e.target.value })}
+              placeholder="Especifica los criterios de aceptación, mockups relevantes y dependencias técnicas."
+              aria-label="Descripción de la tarea"
+              className="w-full rounded-md border border-line2 p-3 text-[13.5px] text-carbon leading-relaxed bg-transparent resize-none min-h-[200px]" />
           </div>
 
-          {activeTab === 'description' && (
-            <div>
-              <textarea value={state.edit.description || ''} onChange={(e) => dispatch({ type: 'SET_FIELD', key: 'description', value: e.target.value })}
-                placeholder="Especifica los criterios de aceptación, mockups relevantes y dependencias técnicas."
-                aria-label="Descripción de la tarea"
-                className="w-full rounded-md border border-line2 p-3 text-[13.5px] text-carbon leading-relaxed bg-transparent resize-none min-h-[280px]" />
-            </div>
-          )}
-
-          {activeTab === 'subtasks' && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Subtareas</div>
-                {!state.editingSub && (
-                  <button type="button" onClick={() => dispatch({ type: 'SET_EDITING_SUB', value: true })} className="text-[12px] font-semibold text-zred hover:underline">+ Añadir</button>
-                )}
-              </div>
-              {state.editingSub && (
-                <div className="flex items-center gap-2 mb-2">
-                  <input value={state.newSubtask} onChange={(e) => dispatch({ type: 'SET_NEW_SUBTASK', value: e.target.value })}
-                    onKeyDown={(e: any) => e.key === 'Enter' && addSubtask()}
-                    placeholder="Nombre de la subtarea..."
-                    aria-label="Nueva subtarea"
-                    className="flex-1 h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
-                  <button type="button" onClick={addSubtask} className="size-9 rounded-md bg-zred text-white flex items-center justify-center hover:bg-zred2 transition-colors" aria-label="Confirmar subtarea">
-                    <Ic.Check width="14" height="14" />
-                  </button>
-                  <button type="button" onClick={() => { dispatch({ type: 'SET_EDITING_SUB', value: false }); dispatch({ type: 'SET_NEW_SUBTASK', value: '' }) }} className="size-9 rounded-md border border-line flex items-center justify-center text-muted hover:text-carbon" aria-label="Cancelar">
-                    <Ic.X width="14" height="14" />
-                  </button>
-                </div>
-              )}
-              {(!state.edit.subtasks || state.edit.subtasks.length === 0) ? (
-                <div className="text-[13px] text-muted">Sin subtareas aún.</div>
-              ) : (
-                <div className="space-y-1">
-                  {state.edit.subtasks.map((s: any, i: number) => (
-                    <button type="button" key={`${s.t}-${i}`} onClick={() => toggleSub(i)} className="w-full flex items-center gap-3 p-2 rounded hover:bg-soft text-left">
-                      <span className={`size-[18px] rounded border flex items-center justify-center transition-colors ${s.d ? 'bg-zred border-zred text-white' : 'border-line bg-white'}`}>
-                        {s.d && <Ic.Check width="12" height="12" />}
-                      </span>
-                      <span className={`text-[13.5px] ${s.d ? 'line-through text-muted' : 'text-carbon'}`}>{s.t}</span>
-                    </button>
-                  ))}
-                </div>
+          {/* Subtareas */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">Subtareas</div>
+              {!state.editingSub && (
+                <button type="button" onClick={() => dispatch({ type: 'SET_EDITING_SUB', value: true })} className="text-[12px] font-semibold text-zred hover:underline">+ Añadir</button>
               )}
             </div>
-          )}
-
-          {activeTab === 'comments' && (
-            <div>
-              <div className="space-y-3 text-[13px] mb-3">
-                {(task.comments || []).map((c: any) => {
-                  const user = profiles.find((u: any) => u.id === c.userId)
-                  return (
-                    <div key={c.id} className="flex items-start gap-3">
-                      <Avatar user={user} size={26} />
-                      <div className="flex-1 bg-soft rounded-md p-3">
-                        <div className="text-[12px] text-muted mb-1">
-                          <span className="font-semibold text-carbon">{user?.name?.split(' ')[0] || 'Usuario'}</span>
-                          {' · '}{new Date(c.timestamp).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                        <div>{c.text}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-                {(task.comments || []).length === 0 && (
-                  <div className="text-[13px] text-muted text-center py-4">Sin comentarios aún.</div>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <input value={state.newComment} onChange={(e) => dispatch({ type: 'SET_NEW_COMMENT', value: e.target.value })}
-                  placeholder="Escribe un comentario..."
-                  aria-label="Nuevo comentario"
-                  className="flex-1 h-10 px-3.5 rounded-full bg-soft border border-transparent text-[13px] outline-none focus:border-zred/30" />
-                <button type="button" disabled={!state.newComment.trim()}
-                  className="size-10 rounded-full bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors" aria-label="Enviar comentario">
-                  <Ic.Arrow width="14" height="14" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'attachments' && (
-            <div>
-              <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Archivos adjuntos</div>
-
-              {(state.edit.attachments || []).length > 0 ? (
-                <div className="space-y-2 mb-4">
-                  {(state.edit.attachments || []).map((a: any, i: number) => (
-                    <div key={i} className="flex items-center gap-3 p-3 rounded-md border border-line2 bg-white">
-                      <Ic.Folder width="16" height="16" className="text-muted shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <a href={a.url} target="_blank" rel="noopener noreferrer"
-                          className="text-[13px] font-semibold text-zred hover:underline truncate block">{a.label}</a>
-                        <span className="text-[11px] text-muted truncate block">{a.url}</span>
-                      </div>
-                      <button type="button" onClick={() => dispatch({ type: 'REMOVE_ATTACHMENT', idx: i })}
-                        className="size-7 rounded hover:bg-soft flex items-center justify-center text-muted hover:text-zred transition-colors">
-                        <Ic.X width="13" height="13" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-[13px] text-muted text-center py-4">Sin archivos adjuntos.</div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <input value={state.newAttachmentLabel} onChange={(e) => dispatch({ type: 'SET_NEW_ATTACHMENT_LABEL', value: e.target.value })}
-                  placeholder="Nombre (opcional)..."
-                  aria-label="Nombre del adjunto"
+            {state.editingSub && (
+              <div className="flex items-center gap-2 mb-2">
+                <input value={state.newSubtask} onChange={(e) => dispatch({ type: 'SET_NEW_SUBTASK', value: e.target.value })}
+                  onKeyDown={(e: any) => e.key === 'Enter' && addSubtask()}
+                  placeholder="Nombre de la subtarea..."
+                  aria-label="Nueva subtarea"
                   className="flex-1 h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
-                <input value={state.newAttachment} onChange={(e) => dispatch({ type: 'SET_NEW_ATTACHMENT', value: e.target.value })}
-                  placeholder="URL..."
-                  aria-label="URL del adjunto"
-                  onKeyDown={(e: any) => e.key === 'Enter' && addAttachment()}
-                  className="flex-[2] h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
-                <button type="button" onClick={addAttachment} disabled={!state.newAttachment.trim()}
-                  className="size-9 rounded-md bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors shrink-0" aria-label="Agregar adjunto">
-                  <Ic.Plus width="14" height="14" />
+                <button type="button" onClick={addSubtask} className="size-9 rounded-md bg-zred text-white flex items-center justify-center hover:bg-zred2 transition-colors" aria-label="Confirmar subtarea">
+                  <Ic.Check width="14" height="14" />
+                </button>
+                <button type="button" onClick={() => { dispatch({ type: 'SET_EDITING_SUB', value: false }); dispatch({ type: 'SET_NEW_SUBTASK', value: '' }) }} className="size-9 rounded-md border border-line flex items-center justify-center text-muted hover:text-carbon" aria-label="Cancelar">
+                  <Ic.X width="14" height="14" />
                 </button>
               </div>
+            )}
+            {(!state.edit.subtasks || state.edit.subtasks.length === 0) ? (
+              <div className="text-[13px] text-muted">Sin subtareas aún.</div>
+            ) : (
+              <div className="space-y-1">
+                {state.edit.subtasks.map((s: any, i: number) => (
+                  <button type="button" key={`${s.t}-${i}`} onClick={() => toggleSub(i)} className="w-full flex items-center gap-3 p-2 rounded hover:bg-soft text-left">
+                    <span className={`size-[18px] rounded border flex items-center justify-center transition-colors ${s.d ? 'bg-zred border-zred text-white' : 'border-line bg-white'}`}>
+                      {s.d && <Ic.Check width="12" height="12" />}
+                    </span>
+                    <span className={`text-[13.5px] ${s.d ? 'line-through text-muted' : 'text-carbon'}`}>{s.t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Comentarios */}
+          <div>
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Comentarios</div>
+            <div className="space-y-3 text-[13px] mb-3">
+              {(task.comments || []).map((c: any) => {
+                const user = profiles.find((u: any) => u.id === c.userId)
+                return (
+                  <div key={c.id} className="flex items-start gap-3">
+                    <Avatar user={user} size={26} />
+                    <div className="flex-1 bg-soft rounded-md p-3">
+                      <div className="text-[12px] text-muted mb-1">
+                        <span className="font-semibold text-carbon">{user?.name?.split(' ')[0] || 'Usuario'}</span>
+                        {' · '}{new Date(c.timestamp).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <div>{c.text}</div>
+                    </div>
+                  </div>
+                )
+              })}
+              {(task.comments || []).length === 0 && (
+                <div className="text-[13px] text-muted text-center py-4">Sin comentarios aún.</div>
+              )}
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <input value={state.newComment} onChange={(e) => dispatch({ type: 'SET_NEW_COMMENT', value: e.target.value })}
+                placeholder="Escribe un comentario..."
+                aria-label="Nuevo comentario"
+                className="flex-1 h-10 px-3.5 rounded-full bg-soft border border-transparent text-[13px] outline-none focus:border-zred/30" />
+              <button type="button" disabled={!state.newComment.trim()}
+                className="size-10 rounded-full bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors" aria-label="Enviar comentario">
+                <Ic.Arrow width="14" height="14" />
+              </button>
+            </div>
+          </div>
+
+          {/* Adjuntos */}
+          <div>
+            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2">Archivos adjuntos</div>
+            {(state.edit.attachments || []).length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {(state.edit.attachments || []).map((a: any, i: number) => (
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-md border border-line2 bg-white">
+                    <Ic.Folder width="16" height="16" className="text-muted shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <a href={a.url} target="_blank" rel="noopener noreferrer"
+                        className="text-[13px] font-semibold text-zred hover:underline truncate block">{a.label}</a>
+                      <span className="text-[11px] text-muted truncate block">{a.url}</span>
+                    </div>
+                    <button type="button" onClick={() => dispatch({ type: 'REMOVE_ATTACHMENT', idx: i })}
+                      className="size-7 rounded hover:bg-soft flex items-center justify-center text-muted hover:text-zred transition-colors">
+                      <Ic.X width="13" height="13" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[13px] text-muted text-center py-4">Sin archivos adjuntos.</div>
+            )}
+            <div className="flex items-center gap-2">
+              <input value={state.newAttachmentLabel} onChange={(e) => dispatch({ type: 'SET_NEW_ATTACHMENT_LABEL', value: e.target.value })}
+                placeholder="Nombre (opcional)..."
+                aria-label="Nombre del adjunto"
+                className="flex-1 h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
+              <input value={state.newAttachment} onChange={(e) => dispatch({ type: 'SET_NEW_ATTACHMENT', value: e.target.value })}
+                placeholder="URL..."
+                aria-label="URL del adjunto"
+                onKeyDown={(e: any) => e.key === 'Enter' && addAttachment()}
+                className="flex-[2] h-9 px-3 rounded-md border border-line text-[13px] bg-white outline-none focus:border-zred" />
+              <button type="button" onClick={addAttachment} disabled={!state.newAttachment.trim()}
+                className="size-9 rounded-md bg-zred text-white flex items-center justify-center disabled:opacity-50 hover:bg-zred2 transition-colors shrink-0" aria-label="Agregar adjunto">
+                <Ic.Plus width="14" height="14" />
+              </button>
+            </div>
+          </div>
 
           <div className="h-4" />
         </div>

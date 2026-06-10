@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useMemo, useRef, useReducer } from 'react'
 import { Ic } from '@/components/icons'
-import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Drawer, Modal, ProgressBar, Tag, Skeleton } from './ui'
+import { Card, Badge, Button, IconButton, Avatar, AvatarStack, Input, Modal, ProgressBar, Tag, Skeleton } from './ui'
 import { CustomDatePicker as DatePicker, CustomSelect } from './controls'
 import { COLUMNS, TAG_STYLES, PRIORITY, STATUS_LABEL, formatDate, formatMoney, daysUntil } from '@/lib/constants'
 import { useCurrentProfile } from '@/lib/supabase/useCurrentProfile'
 import { ConfirmDialog, FiltersDrawer } from './modals'
-import { createTask, updateTask, deleteTask, moveTask } from '@/lib/supabase/queries'
+import { createTask, deleteTask, moveTask } from '@/lib/supabase/queries'
 import { notifyTaskCompleted, notifyTaskCreated } from '@/lib/supabase/notify'
 import { ExportButton } from './export-modal'
 
