@@ -75,6 +75,7 @@ export default function HomePage() {
   const [drawerTask, setDrawerTask] = useState<any>(null);
   const [fullViewTask, setFullViewTask] = useState<any>(null);
   const prevViewRef = useRef('kanban');
+  const sectionLabels: Record<string, string> = { kanban: 'Pendientes', list: 'Lista', calendar: 'Calendario' };
   const userMenuRef = useRef<HTMLDivElement>(null);
   const notifBtnRef = useRef<HTMLDivElement>(null);
 
@@ -180,7 +181,13 @@ export default function HomePage() {
               task={fullViewTask}
               projects={projects}
               profiles={profiles}
-              onBack={() => { setFullViewTask(null); setView(prevViewRef.current) }}
+              sectionLabel={sectionLabels[prevViewRef.current] || 'Pendientes'}
+              onBack={() => {
+                const task = fullViewTask
+                setFullViewTask(null)
+                setView(prevViewRef.current)
+                setDrawerTask(task)
+              }}
               onUpdate={(updated: any) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
             />
           )}
@@ -191,7 +198,7 @@ export default function HomePage() {
           open={!!drawerTask}
           onClose={() => setDrawerTask(null)}
           onUpdate={(updated: any) => setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))}
-          onOpenFullView={(task: any) => { prevViewRef.current = view; setFullViewTask(task); setView('task-detail') }}
+          onOpenFullView={(task: any) => { prevViewRef.current = view; setDrawerTask(null); setFullViewTask(task); setView('task-detail') }}
         />
       </main>
 

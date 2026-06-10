@@ -43,7 +43,7 @@ function taskDetailReducer(state: any, action: any) {
   }
 }
 
-export default function TaskDetailView({ task, projects, profiles: _profiles, onBack, onUpdate }: any) {
+export default function TaskDetailView({ task, projects, profiles: _profiles, onBack, onUpdate, sectionLabel }: any) {
   const [state, dispatch] = useReducer(taskDetailReducer, {
     edit: { ...(task || {}), description: task?.description || '', subtasks: task?.subtasks || [], attachments: task?.attachments || [] },
     saved: false,
@@ -92,7 +92,7 @@ export default function TaskDetailView({ task, projects, profiles: _profiles, on
           <span className="text-muted select-none">/</span>
           <button type="button" onClick={onBack}
             className="text-[13px] font-semibold text-muted hover:text-carbon transition-colors">
-            Pendientes
+            {sectionLabel || 'Pendientes'}
           </button>
           {project && (
             <>
