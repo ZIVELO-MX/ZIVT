@@ -7,8 +7,9 @@ import { exportToCSV, exportToJSON, toCSV, toJSON, taskToExportRow, validateImpo
 
 export function ExportButton({ data, projects, profiles, filename = 'export', viewName = 'tareas' }: any) {
   const [open, setOpen] = useState(false)
-  const [copied, setCopied] = useState<'csv' | 'json' | 'prompt' | null>(null)
-  const [instruction, setInstruction] = useState('genera un resumen ejecutivo agrupado por proyecto')
+  const [copied, setCopied] = useState<'csv' | 'json' | null>(null)
+  const [promptCopied, setPromptCopied] = useState<'csv' | 'json' | null>(null)
+  const [instruction, setInstruction] = useState('generate an executive summary grouped by project')
   const [tab, setTab] = useState<'export' | 'import' | 'prompt'>('export')
   const [importText, setImportText] = useState('')
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -59,29 +60,22 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
   function generatePrompt() {
     const sample = rows.slice(0, 2)
     return [
-      `Eres un asistente que genera datos de prueba para un panel de tareas.`,
+      `You are an assistant that generates test data for a task management dashboard.`,
       ``,
-      `## Schema de los datos`,
+      `## Data Schema`,
       ``,
-      `Cada registro debe tener estos campos:`,
+      `Each record must include these fields:`,
       schemaToMarkdown(),
       ``,
-      `## Formato de salida`,
-      `Debes devolver ÚNICAMENTE el contenido en el formato solicitado, sin explicaciones ni markdown alrededor.`,
+      `## Output Format`,
+      `Return ONLY the content in the requested format, no explanations, no markdown around it.`,
       ``,
-      `## Instrucción`,
+      `## Instruction`,
       instruction,
       ``,
-      `## Ejemplo de una fila válida`,
+      `## Example of a valid row`,
       JSON.stringify(sample[0] || SCHEMA_FIELDS.reduce((acc, f) => ({ ...acc, [f.name]: f.type === 'number' ? 0 : '—' }), {}), null, 2),
     ].join('\n')
-  }
-
-  function handleCopyPrompt() {
-    navigator.clipboard.writeText(generatePrompt()).then(() => {
-      setCopied('prompt')
-      setTimeout(() => setCopied(null), 2000)
-    })
   }
 
   return (
@@ -185,9 +179,13 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
               {tab === 'prompt' && (
                 <>
                   <div className="text-[13px] text-muted space-y-2">
-                    <p>Pide a la IA que genere datos en CSV o JSON siguiendo el schema de abajo.</p>
+                    <p>Ask an AI to generate test data in CSV or JSON following the schema below.</p>
+                    <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-md p-3 text-amber-800">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                      <span>Prompts in English are more effective and consume fewer tokens. The generated schema and examples are already in English.</span>
+                    </div>
                     <p className="text-[12px] bg-[#EEF0FF] rounded-md p-3 text-[#3A47B5]">
-                      <strong>Flujo:</strong> Copia el prompt → pégalo en la IA → ella responde con datos → copia esa respuesta en la pestaña <strong>Importar</strong> para validar.
+                      <strong>Flow:</strong> Copy the prompt → paste into the AI → it replies with data → paste that response into the <strong>Import</strong> tab to validate.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -195,29 +193,29 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                       <button key={format} type="button" onClick={() => {
                         const fmt = format === 'csv' ? 'CSV' : 'JSON'
                         const base = generatePrompt()
-                        const extra = `\n\nDevuélveme los datos en formato ${fmt} con las columnas exactas del schema. Solo el contenido ${fmt}, sin markdown.`
+                        const extra = `\n\nReturn the data in ${fmt} format with the exact columns from the schema. Only the ${fmt} content, no markdown, no explanations.`
                         navigator.clipboard.writeText(base + extra).then(() => {
-                          setCopied('prompt')
-                          setTimeout(() => setCopied(null), 2000)
+                          setPromptCopied(format)
+                          setTimeout(() => setPromptCopied(null), 2000)
                         })
                       }}
                         className="flex flex-col items-center justify-center gap-2 p-5 rounded-lg border border-line2 hover:border-zred/40 hover:bg-tint/30 transition-all text-center">
                         <div className="font-semibold text-[14px] text-carbon">
                           {format === 'csv' ? 'CSV' : 'JSON'}
                         </div>
-                        <div className="text-[11px] text-muted">Prompt para generar {format.toUpperCase()}</div>
-                        {copied === 'prompt' && <div className="text-[11px] text-zred font-medium">✓ Copiado</div>}
+                        <div className="text-[11px] text-muted">Prompt to generate {format.toUpperCase()}</div>
+                        {promptCopied === format && <div className="text-[11px] text-zred font-medium">✓ Copiado</div>}
                       </button>
                     ))}
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">¿Qué datos quieres que genere?</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">What data do you want to generate?</div>
                     <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-                      placeholder="Ej: 5 tareas de ejemplo para un proyecto de e-commerce..."
+                      placeholder="e.g. 5 sample tasks for an e-commerce project..."
                       className="w-full h-10 px-3 rounded-md border border-line text-[13px] outline-none focus:border-zred" />
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Schema que se incluye en el prompt</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Schema included in the prompt</div>
                     <pre className="bg-soft rounded-md p-3 text-[11px] font-mono text-muted overflow-x-auto max-h-36">
                       {SCHEMA_FIELDS.map(f => `${f.name} (${f.type}): ${f.desc}`).join('\n')}
                     </pre>
