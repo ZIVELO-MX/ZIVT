@@ -182,10 +182,10 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                     <p>Ask an AI to generate test data in CSV or JSON following the schema below.</p>
                     <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-md p-3 text-amber-800">
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                      <span>Prompts in English are more effective and consume fewer tokens. The generated schema and examples are already in English.</span>
+                      <span>Los prompts en inglés son más efectivos y gastan menos tokens. El schema y ejemplos ya están en inglés.</span>
                     </div>
                     <p className="text-[12px] bg-[#EEF0FF] rounded-md p-3 text-[#3A47B5]">
-                      <strong>Flow:</strong> Copy the prompt → paste into the AI → it replies with data → paste that response into the <strong>Import</strong> tab to validate.
+                      <strong>Flujo:</strong> Copia el prompt → pégalo en la IA → ella responde con datos → copia esa respuesta en la pestaña <strong>Importar</strong> para validar.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -203,19 +203,19 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                         <div className="font-semibold text-[14px] text-carbon">
                           {format === 'csv' ? 'CSV' : 'JSON'}
                         </div>
-                        <div className="text-[11px] text-muted">Prompt to generate {format.toUpperCase()}</div>
+                        <div className="text-[11px] text-muted">Prompt para generar {format.toUpperCase()}</div>
                         {promptCopied === format && <div className="text-[11px] text-zred font-medium">✓ Copiado</div>}
                       </button>
                     ))}
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">What data do you want to generate?</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">¿Qué datos quieres que genere?</div>
                     <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-                      placeholder="e.g. 5 sample tasks for an e-commerce project..."
+                      placeholder="Ej: 5 tareas de ejemplo para un proyecto de e-commerce..."
                       className="w-full h-10 px-3 rounded-md border border-line text-[13px] outline-none focus:border-zred" />
                   </div>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Schema included in the prompt</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Schema que se incluye en el prompt</div>
                     <pre className="bg-soft rounded-md p-3 text-[11px] font-mono text-muted overflow-x-auto max-h-36">
                       {SCHEMA_FIELDS.map(f => `${f.name} (${f.type}): ${f.desc}`).join('\n')}
                     </pre>
