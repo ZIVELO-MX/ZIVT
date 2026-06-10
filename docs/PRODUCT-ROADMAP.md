@@ -89,19 +89,19 @@ Regla práctica: **si el dato vive a nivel tarea o movimiento puntual, es de est
 - [ ] Flujo de invitación al equipo (requiere service-role key o Edge Function — ver Pendientes bloqueados)
 
 **Producto**
-- [ ] Vista lista/tabla de tareas
+- [x] **Vista lista/tabla de tareas** — implementada en PR #12: `components/tasks-list.tsx` con columnas sortables, edición inline de estado/asignados, vista mobile en cards
 - [ ] Vista calendario
-- [ ] Export CSV/JSON (botón de clientes existe sin handler; tareas ni eso)
-- [ ] Import CSV/JSON
+- [x] **Export CSV/JSON** — modal unificado con toggle CSV↔JSON, preview de primeras 10 filas, Descargar y Copiar; disponible en Kanban y Lista
+- [ ] Import CSV/JSON (UI con textarea para pegar + validación de formato lista, falta import real a Supabase)
 - [ ] Campos financieros en tareas, gastos, pagos, reportes
-- [ ] Búsqueda y filtros fuera del Kanban
+- [x] **Búsqueda y filtros fuera del Kanban** — FiltersDrawer reutilizado en Lista (tags, prioridad, vencimiento, asignados, orden)
 
 **UX** (inventario completo en `BOTONES-SIN-FUNCIONALIDAD.md` — 28 elementos sin handler)
 - [ ] Guardar cambios en TaskDetail no persiste; subtareas y comentarios no se pueden crear
 - [ ] Menús contextuales `⋯` de columnas y proyectos vacíos
 - [ ] Invitar al equipo, Configuración, ítems del menú de usuario sin acción
-- [ ] **Skeleton / loading states** — varias vistas no muestran feedback mientras cargan datos (ver auditoría sección 13)
-- [ ] **Botón "Copiar prompt IA"** — no existe botón que copie el formato de datos al portapapeles para que una IA entienda la estructura y genere código/scripts compatibles
+- [x] **Skeleton / loading states** — implementado en Kanban y TaskList (PR #12); componente `<Skeleton>` con 7 variantes; `useAppData` expone `loading`
+- [x] **Botón "Prompt IA"** — en el modal Exportar/Importar, pestaña Prompt IA: seleccionas formato (CSV/JSON), describe los datos a generar, copia el prompt al portapapeles. La IA responde con datos que se pegan en Importar.
 
 **Datos**
 - [ ] Sin tabla de tags (hoy `tag` es un string suelto en task)
