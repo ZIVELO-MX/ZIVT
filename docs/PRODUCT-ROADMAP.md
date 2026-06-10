@@ -3,7 +3,7 @@
 **Rol del documento:** roadmap de producto versionado (v0.1 → v1.0 → Futuro), auditoría del estado actual y modelo de datos objetivo.
 **Relación con `.planning/ROADMAP.md`:** aquel documento es el plan de *ejecución técnica* (fases 1–10 para conectar la UI a Supabase). Este documento es el plan de *producto*: define qué es la herramienta, qué versiones existen y qué no se construye.
 
-*Última actualización: 2026-06-09 (rev. 3 — agrega especificación de issues tipo Jira para el Roadmap)*
+*Última actualización: 2026-06-09 (rev. 4 — mueve invitación a later, agrega plan visual prototype)*
 
 ---
 
@@ -336,16 +336,16 @@ Zoho OAuth nativo · adjuntos en Supabase Storage · integración lectura con he
 | Workflows de aprobación multi-paso | `pending → paid` + audit log basta | Si los montos crecen y duele |
 | Multi-workspace | Un solo Zivelo | Nunca previsible |
 | Zoho OAuth/OIDC | Email del dominio Zoho vía Supabase da el 95 % del valor con 5 % del esfuerzo | Post-v1.0 si el login con contraseña molesta |
+| Invitación automática al equipo | No es crítica para el uso diario; invitar manual desde Supabase Studio funciona para el equipo actual de 5–7 personas | Si el equipo crece >10 y el proceso manual deja de escalar |
 
 ---
 
-## 10. Próximas 5 tareas de implementación
+## 10. Próximas 4 tareas de implementación
 
 1. ~~Conectar el login a Supabase Auth~~ — **hecho en main** (login, logout, middleware `proxy.ts`).
-2. ~~Restringir acceso al dominio Zoho~~ — **hecho en PR #10** (`feat/auth-domain-guard`); el flujo de invitación sigue pendiente (ver Pendientes bloqueados).
-3. **Flujo de invitación al equipo** desde el botón del sidebar: requiere Supabase Edge Function o route handler con service-role key (`auth.admin.inviteUserByEmail`) + validación de dominio. *(v0.1)*
-4. **Probar RLS con usuarios reales de cada rol:** crear un usuario `editor` y un `viewer` de prueba y verificar que Clientes/MRR quedan inaccesibles por API, no solo ocultos en UI. *(v0.1, requiere acceso a Supabase Studio)*
-5. **Verificar el deploy de Vercel** (root directory `.`, env vars incl. `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`) y dejar URL interna estable documentada en el README. *(v0.1, requiere acceso al dashboard de Vercel)*
+2. ~~Restringir acceso al dominio Zoho~~ — **hecho en PR #10** (`feat/auth-domain-guard`).
+3. **Probar RLS con usuarios reales de cada rol:** crear un usuario `editor` y un `viewer` de prueba y verificar que Clientes/MRR quedan inaccesibles por API, no solo ocultos en UI. *(v0.1, requiere acceso a Supabase Studio)*
+4. **Verificar el deploy de Vercel** (root directory `.`, env vars incl. `NEXT_PUBLIC_ALLOWED_EMAIL_DOMAINS`) y dejar URL interna estable documentada en el README. *(v0.1, requiere acceso al dashboard de Vercel)*
 
 ---
 
@@ -542,3 +542,22 @@ create table if not exists public.roadmap_items (
 6. Se pueden adjuntar URLs de referencia (GitHub, Drive, etc.).
 7. Los datos persisten en Supabase y se reflejan en tiempo real en todos los clientes.
 8. Un usuario `viewer` puede ver items pero no crearlos/editarlos (validado por RLS).
+
+### 15.6 Plan de implementación visual (prototipo sin DB)
+
+**Cuándo:** antes de que exista la migración de base de datos, para validar UX con el equipo.
+
+**Alcance:**
+- Componente `components/roadmap.tsx` con estado en `useState` (sin persistencia).
+- Mock data con 5–6 items de ejemplo distribuidos en las 6 columnas.
+- Kanban board con drag & drop entre columnas (reutilizar patrón de `learning.tsx`).
+- Detail drawer modal con: título editable, descripción en textarea (Markdown plano), subtareas checklist, comentarios, adjuntos por URL, labels con tags, asignación de perfiles.
+- Modal de nuevo item con formulario completo.
+- Sin llamadas a Supabase — toda la mutación es local.
+
+**No incluye** (se hará cuando exista la migración):
+- Persistencia en BD.
+- Realtime.
+- RLS.
+- Editor Markdown con preview en vivo.
+- Subida de archivos a Storage.
