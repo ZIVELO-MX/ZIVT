@@ -238,9 +238,8 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                     {promptCopied === 'json' ? '✓ Copiado al portapapeles' : 'Copiar prompt a la IA'}
                   </Button>
                   <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">¿Qué datos quieres que genere?</div>
                     <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
-                      placeholder="Ej: 5 tareas de ejemplo para un proyecto de e-commerce..."
+                      placeholder="Especifica aquí los datos que quieres generar. Ej: 5 tareas de ejemplo para un proyecto de e-commerce, en español, con fechas de este mes..."
                       className="w-full h-10 px-3 rounded-md border border-line text-[13px] outline-none focus:border-zred" />
                   </div>
                   <div>
