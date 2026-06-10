@@ -3,7 +3,7 @@
 **Rol del documento:** roadmap de producto versionado (v0.1 → v1.0 → Futuro), auditoría del estado actual y modelo de datos objetivo.
 **Relación con `.planning/ROADMAP.md`:** aquel documento es el plan de *ejecución técnica* (fases 1–10 para conectar la UI a Supabase). Este documento es el plan de *producto*: define qué es la herramienta, qué versiones existen y qué no se construye.
 
-*Última actualización: 2026-06-09 (rev. 2 — refleja el avance de main: auth real, middleware, eliminación de mocks)*
+*Última actualización: 2026-06-09 (rev. 3 — agrega especificación de issues tipo Jira para el Roadmap)*
 
 ---
 
@@ -427,3 +427,118 @@ Devuelve solo el código/script listo para ejecutar, sin explicaciones.
   - Schema: lista de campos con tipo de dato (string, number, date, etc.)
   - Instrucción del usuario
   - Ejemplo de 2 filas reales para contexto
+
+---
+
+## 15. Especificación: Issues tipo Jira para el Roadmap
+
+**Propósito:** Agregar al Roadmap del producto una entidad `roadmap_item` que funcione como issue/ticket tipo Jira, con descripción enriquecida, comentarios, subtareas, adjuntos, labels y trazabilidad. Sirve para planificación estratégica a mediano plazo, separada de las tareas diarias del Kanban.
+
+**Relación con el modelo existente:** `roadmap_items` es una entidad *nueva*. No reemplaza a `tasks` (que sigue siendo el bloque diario). Un `roadmap_item` representa un objetivo, épica o iniciativa que puede dar origen a varias `tasks` concretas.
+
+### 15.1 Objetivos
+
+1. **Planear con contexto:** cada item del roadmap tiene una descripción rica (Markdown) donde documentar motivación, alcance y criterios de aceptación.
+2. **Debatir sin ruido:** comments dentro del item, sin mezclarse con el Kanban diario.
+3. **Dividir para vencer:** subtareas tipo checklist que fragmentan el item en pasos verificables.
+4. **Adjuntar evidencia:** archivos/links de GitHub, Drive, o cualquier URL.
+5. **Trazar progreso:** estado claro (backlog → done) y prioridad, visibles de un vistazo.
+
+### 15.2 Propuesta de esquema de datos
+
+Se usa Postgres con columnas `jsonb` para datos semiestructurados (comments, subtasks, attachments). Esto evita tablas extra y permite queries flexibles.
+
+```sql
+create table if not exists public.roadmap_items (
+  id          text primary key,
+  title       text not null,                          -- descripción breve
+  description jsonb default '{"text":""}',            -- Markdown enriquecido
+  status      text default 'backlog'
+                check (status in ('backlog','planned','in_progress','review','done','cancelled')),
+  priority    text default 'med'
+                check (priority in ('low','med','high','critical')),
+  assignee    text[] default '{}',                     -- ids de perfiles
+  labels      text[] default '{}',                     -- tags libres
+  project     text,                                    -- FK opcional a projects
+  epic        text,                                    -- grouping de items
+  due         date,
+  attachments jsonb default '[]',                      -- [{id, name, url, type, size}]
+  subtasks    jsonb default '[]',                      -- [{id, title, done}]
+  comments    jsonb default '[]',                      -- [{id, author, body, createdAt}]
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+```
+
+**Notas:**
+- `description` se guarda como `{"text": "..."}` para permitir migrar a un modelo más rico después (e.g. `{"text": "...", "html": "...", "mentions": [...]}`).
+- `attachments` soporta cualquier URL (GitHub, Drive, Figma, etc.). La validación de que la URL exista es responsabilidad del usuario.
+- `comments` almacena autor (profile id), body (texto con Markdown) y timestamp. Suficiente para un equipo de <10 personas; si escala, migrar a tabla separada.
+- `subtasks` son checklist planos: `{id, title, done}`. Sin anidamiento.
+
+### 15.3 Propuesta de tecnología
+
+| Aspecto | Propuesta | Objetivo (por qué, no cómo) |
+|---|---|---|
+| Framework | Next.js 16 (App Router) + React 19 — stack existente | Consistencia con el resto del panel |
+| Base de datos | Supabase/Postgres con `jsonb` — stack existente | Sin infraestructura nueva |
+| ORM / acceso a datos | **Prisma** (agregar al proyecto) o Supabase JS client directo | Capa de datos tipada, migraciones declarativas, DX con autocompletado |
+| Editor enriquecido | `@uiw/react-md-editor` o `react-simplemde-editor` | Escribir Markdown con preview en vivo; evitar construir un editor desde cero |
+| UI de board | Kanban nativo (como el existente) con drag & drop entre columnas | Reutilizar patrón de `components/kanban.tsx` ya probado |
+| Almacenamiento de archivos | Supabase Storage o solo URLs de referencia | Adjuntar evidencia sin subir archivos pesados al servidor; si se necesita storage real, será Futuro |
+| Rich text en comments | Markdown renderizado con `react-markdown` + `remark-gfm` | Mostrar comments con formato sin permitir HTML peligroso |
+
+### 15.4 Paso a paso para implementar
+
+1. **Migración de base de datos**
+   - Crear la tabla `roadmap_items` vía migración SQL (`supabase/migrations/006_roadmap_items.sql`).
+   - Agregar trigger `updated_at`.
+   - Agregar política RLS básica (solo `founder`/`admin`/`editor` pueden escribir; `viewer` solo lectura).
+
+2. **Tipos TypeScript**
+   - Agregar `RoadmapStatus`, `RoadmapPriority`, `RoadmapAttachment`, `RoadmapSubtask`, `RoadmapComment`, `RoadmapItem` a `lib/supabase/schema.ts`.
+   - Agregar mapper functions (`roadmapItemRowToRoadmapItem`, `roadmapItemToRoadmapItemRow`) a `lib/supabase/types.ts`.
+   - Exportar tipos desde el barrel.
+
+3. **Queries CRUD**
+   - Agregar `getRoadmapItems`, `createRoadmapItem`, `updateRoadmapItem`, `deleteRoadmapItem` a `lib/supabase/queries.ts`.
+   - Integrar en `useAppData` con realtime (subscription `postgres_changes` para `roadmap_items`).
+
+4. **Constantes**
+   - Agregar `ROADMAP_COLS` (backlog, planned, in_progress, review, done, cancelled) a `lib/constants.ts`.
+   - Agregar `ROADMAP_PRIORITY` y `ROADMAP_STATUS` labels.
+
+5. **Componente `Roadmap`**
+   - Crear `components/roadmap.tsx` con:
+     - Board Kanban de 6 columnas, drag & drop entre columnas.
+     - Detail drawer con:
+       - Título editable.
+       - Descripción Markdown con editor/preview.
+       - Subtareas (checklist) con toggle y creación inline.
+       - Comentarios (lista + input para agregar).
+       - Adjuntos (lista + URL input para agregar).
+       - Labels, assignees, proyecto, épica.
+     - Modal de nuevo item.
+     - Skeleton loading state.
+
+6. **Integrar en la app**
+   - Agregar `'roadmap'` a `VALID_VIEWS` en `app/page.tsx`.
+   - Renderizar `<Roadmap>` condicionalmente.
+   - Agregar NavItem en `sidebar.tsx` (icono `Ic.Map` o `Ic.Sparkle`).
+   - Agregar entrada en `TOPBAR_TITLES`.
+
+7. **Pruebas**
+   - Test unitario de mappers (`roadmapItemRowToRoadmapItem`).
+   - Test de queries con Supabase local.
+   - Verificar RLS visualmente con usuario `viewer`.
+
+### 15.5 Criterios de aceptación
+
+1. Un usuario puede crear un item del roadmap con título, descripción Markdown, labels y prioridad.
+2. El item se puede mover entre columnas (backlog → planned → in_progress → review → done) con drag & drop.
+3. La descripción se renderiza como Markdown formateado y es editable.
+4. Se pueden agregar/quitar subtareas con toggle de completado.
+5. Se pueden agregar comentarios con autor y timestamp.
+6. Se pueden adjuntar URLs de referencia (GitHub, Drive, etc.).
+7. Los datos persisten en Supabase y se reflejan en tiempo real en todos los clientes.
+8. Un usuario `viewer` puede ver items pero no crearlos/editarlos (validado por RLS).
