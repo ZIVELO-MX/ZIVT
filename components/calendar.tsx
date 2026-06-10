@@ -1,11 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Ic } from '@/components/icons'
-import { Avatar, Button, Badge, Tag } from '@/components/ui'
-import { formatDate, daysUntil } from '@/lib/constants'
+import { Avatar, Button, Tag } from '@/components/ui'
 import { MOCK_EVENTS, MOCK_PROFILES } from '@/lib/mock-roadmap'
-import type { Task } from '@/lib/supabase/types'
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 const DAYS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']
@@ -14,17 +12,32 @@ function getMonthGrid(year: number, month: number) {
   const first = new Date(year, month, 1)
   const last = new Date(year, month + 1, 0)
   const startPad = first.getDay()
-  const totalDays = last.getDate()
   const cells: (number | null)[] = []
   for (let i = 0; i < startPad; i++) cells.push(null)
-  for (let d = 1; d <= totalDays; d++) cells.push(d)
+  for (let d = 1; d <= last.getDate(); d++) cells.push(d)
   while (cells.length % 7 !== 0) cells.push(null)
   return cells
 }
 
+function pad(n: number) { return String(n).padStart(2, '0') }
+
+function getDateStr(year: number, month: number, day: number) {
+  return `${year}-${pad(month + 1)}-${pad(day)}`
+}
+
 function getEventsForDay(events: typeof MOCK_EVENTS, year: number, month: number, day: number) {
-  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  return events.filter(e => e.due === dateStr || e.start.startsWith(dateStr))
+  const ds = getDateStr(year, month, day)
+  return events.filter(e => e.due === ds || e.start.startsWith(ds))
+}
+
+function shiftDay(iso: string, diff: number) {
+  const d = new Date(iso)
+  d.setDate(d.getDate() + diff)
+  const y = d.getFullYear()
+  const m = pad(d.getMonth() + 1)
+  const day = pad(d.getDate())
+  const time = iso.includes('T') ? iso.slice(10) : ''
+  return `${y}-${m}-${day}${time}`
 }
 
 const COLORS_BY_TAG: Record<string, string> = {
@@ -34,15 +47,15 @@ const COLORS_BY_TAG: Record<string, string> = {
 
 export default function Calendar({ tasks: _tasks, setView }: any) {
   const today = new Date()
-  const [viewMode, setViewMode] = useState<'month' | 'week'>('month')
+  const [events, setEvents] = useState(() => MOCK_EVENTS)
   const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [selectedDay, setSelectedDay] = useState<{ year: number; month: number; day: number } | null>(null)
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   const year = cursor.getFullYear()
   const month = cursor.getMonth()
   const grid = useMemo(() => getMonthGrid(year, month), [year, month])
-
-  const events = MOCK_EVENTS
 
   const selectedEvents = selectedDay
     ? getEventsForDay(events, selectedDay.year, selectedDay.month, selectedDay.day)
@@ -57,6 +70,53 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
 
   const isSelected = (d: number) =>
     selectedDay?.day === d && selectedDay?.month === month && selectedDay?.year === year
+
+  const handleDragStart = useCallback((e: React.DragEvent, eventId: string) => {
+    e.dataTransfer.setData('text/plain', eventId)
+    e.dataTransfer.effectAllowed = 'move'
+    setDragId(eventId)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setDragId(null)
+    setDropTarget(null)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const handleDragEnter = useCallback((e: React.DragEvent, key: string) => {
+    e.preventDefault()
+    setDropTarget(key)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent, key: string) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    setDropTarget(prev => prev === key ? null : prev)
+  }, [])
+
+  function handleDrop(e: React.DragEvent, targetYear: number, targetMonth: number, targetDay: number) {
+    e.preventDefault()
+    setDropTarget(null)
+    const eventId = e.dataTransfer.getData('text/plain')
+    if (!eventId) return
+    setEvents(prev => prev.map(ev => {
+      if (ev.id !== eventId) return ev
+      const oldStart = ev.start.slice(0, 10)
+      const newStart = getDateStr(targetYear, targetMonth, targetDay)
+      const diff = Math.round((new Date(newStart).getTime() - new Date(oldStart).getTime()) / 86400000)
+      if (diff === 0) return ev
+      return {
+        ...ev,
+        start: shiftDay(ev.start, diff),
+        end: shiftDay(ev.end, diff),
+        due: ev.due ? shiftDay(ev.due, diff) : ev.due,
+      }
+    }))
+    setDragId(null)
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-72px)]">
@@ -75,20 +135,6 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
             <Button variant="ghost" size="sm" onClick={goToday}>Hoy</Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex bg-soft rounded-lg p-0.5">
-            <button type="button" onClick={() => setViewMode('month')}
-              className={`px-3 h-8 rounded-md text-[12.5px] font-semibold transition-all ${
-                viewMode === 'month' ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
-              Mes
-            </button>
-            <button type="button" onClick={() => setViewMode('week')}
-              className={`px-3 h-8 rounded-md text-[12.5px] font-semibold transition-all ${
-                viewMode === 'week' ? 'bg-white text-carbon shadow-soft' : 'text-muted hover:text-carbon'}`}>
-              Semana
-            </button>
-          </div>
-        </div>
       </div>
 
       <div className="flex-1 flex gap-0 min-h-0">
@@ -102,14 +148,19 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
             {grid.map((day, i) => {
               if (day === null) return <div key={`e-${i}`} className="bg-soft/50 min-h-[90px]" />
               const dayEvents = getEventsForDay(events, year, month, day)
+              const cellKey = getDateStr(year, month, day)
+              const isOver = dropTarget === cellKey
               return (
-                <button
-                  type="button"
+                <div
                   key={day}
                   onClick={() => setSelectedDay({ year, month, day })}
-                  className={`bg-white p-1.5 text-left transition-all hover:bg-soft/60 min-h-[90px] flex flex-col ${
+                  onDragOver={handleDragOver}
+                  onDragEnter={(e) => handleDragEnter(e, cellKey)}
+                  onDragLeave={(e) => handleDragLeave(e, cellKey)}
+                  onDrop={(e) => handleDrop(e, year, month, day)}
+                  className={`bg-white p-1.5 text-left transition-all hover:bg-soft/60 min-h-[90px] flex flex-col cursor-pointer ${
                     isSelected(day) ? 'ring-2 ring-zred ring-inset z-10' : ''
-                  } ${isToday(day) ? 'bg-tint/30' : ''}`}
+                  } ${isToday(day) ? 'bg-tint/30' : ''} ${isOver ? 'bg-soft ring-2 ring-zred/40 ring-inset' : ''}`}
                 >
                   <span className={`inline-flex items-center justify-center size-6 rounded-full text-[12px] font-semibold mb-1 ${
                     isToday(day) ? 'bg-zred text-white' : 'text-carbon'
@@ -119,7 +170,13 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
                   <div className="flex-1 space-y-0.5 overflow-hidden">
                     {dayEvents.slice(0, 3).map(e => (
                       <div key={e.id}
-                        className="text-[10px] font-semibold truncate rounded px-1 py-0.5 text-white leading-tight"
+                        draggable
+                        onDragStart={(ev) => { ev.stopPropagation(); handleDragStart(ev, e.id) }}
+                        onDragEnd={(ev) => { ev.stopPropagation(); handleDragEnd() }}
+                        onClick={(ev) => ev.stopPropagation()}
+                        className={`text-[10px] font-semibold truncate rounded px-1 py-0.5 text-white leading-tight transition-all ${
+                          dragId === e.id ? 'opacity-30 scale-95' : ''
+                        }`}
                         style={{ background: COLORS_BY_TAG[e.tag] || '#6B6B6B' }}
                       >
                         {e.title}
@@ -129,7 +186,7 @@ export default function Calendar({ tasks: _tasks, setView }: any) {
                       <span className="text-[10px] text-muted font-medium pl-1">+{dayEvents.length - 3} más</span>
                     )}
                   </div>
-                </button>
+                </div>
               )
             })}
           </div>
