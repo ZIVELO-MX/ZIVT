@@ -293,7 +293,7 @@ function taskDetailReducer(state: any, action: any) {
   }
 }
 
-function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete, comments, onAddComment }: any) {
+function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete, comments, onAddComment, onOpenFullView }: any) {
   const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(taskDetailReducer, {
     edit: { ...(task || {}), description: task?.description || '' },
@@ -331,6 +331,15 @@ function TaskDetail({ task, projects, profiles = [], onClose, onUpdate, onDelete
 
   return (
     <Drawer open onClose={onClose} title="Detalle de tarea" width={520}
+      headerEnd={onOpenFullView ? (
+        <button type="button" onClick={() => onOpenFullView(task)}
+          className="h-8 px-2.5 rounded-full hover:bg-soft inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-muted hover:text-carbon transition-colors">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+          </svg>
+          Abrir en vista completa
+        </button>
+      ) : undefined}
       footer={
         <div className="flex items-center justify-between gap-2">
           <Button variant="danger" size="sm" onClick={() => { onDelete(task.id); onClose(); }}>
@@ -610,7 +619,7 @@ function kanbanReducer(state: any, action: any) {
   }
 }
 
-export default function Kanban({ tasks, setTasks, projects, profiles = [], loading }: any) {
+export default function Kanban({ tasks, setTasks, projects, profiles = [], loading, onOpenFullView }: any) {
   const currentUser = useCurrentProfile()
   const [state, dispatch] = useReducer(kanbanReducer, null, () => ({
     ...KANBAN_INIT,
@@ -896,6 +905,7 @@ export default function Kanban({ tasks, setTasks, projects, profiles = [], loadi
           }}
           comments={state.taskComments[state.openTask.id] || []}
           onAddComment={onAddComment}
+          onOpenFullView={onOpenFullView}
         />
       )}
       <NewTaskModal

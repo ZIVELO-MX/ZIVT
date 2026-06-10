@@ -127,7 +127,7 @@ export function Select({ label, options, ...rest }: any) {
   )
 }
 
-export function Drawer({ open, onClose, title, children, footer, width = 460 }: any) {
+export function Drawer({ open, onClose, title, children, footer, width = 460, headerEnd }: any) {
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     if (open) window.addEventListener('keydown', onKey)
@@ -144,9 +144,12 @@ export function Drawer({ open, onClose, title, children, footer, width = 460 }: 
       >
         <div className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-line2 shrink-0">
           <h3 className="font-semibold text-[16px]">{title}</h3>
-          <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
-            <Ic.X width="18" height="18" />
-          </button>
+          <div className="flex items-center gap-1">
+            {headerEnd}
+            <button type="button" onClick={onClose} className="size-8 rounded-full hover:bg-soft inline-flex items-center justify-center">
+              <Ic.X width="18" height="18" />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto scroll-thin min-h-0">{children}</div>
         {footer && <div className="px-4 md:px-6 py-4 border-t border-line2 bg-white shrink-0">{footer}</div>}

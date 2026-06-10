@@ -200,6 +200,7 @@ const TOPBAR_TITLES: Record<string, { t: string; s: string }> = {
   profile:     { t: 'Mi perfil',      s: 'Información de tu cuenta' },
   learning:    { t: 'Aprendizaje',    s: 'Materiales de estudio y desarrollo del equipo' },
   calendar:    { t: 'Calendario',     s: 'Vista de calendario con eventos y tareas' },
+  'task-detail': { t: 'Detalle de tarea', s: 'Vista completa de la tarea' },
 }
 
 export function Topbar({ view, onOpenCommand, onOpenNotifs, onOpenUserMenu, userMenuRef, notifBtnRef, onOpenMenu }: any) {
