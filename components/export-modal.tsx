@@ -9,7 +9,8 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState<'csv' | 'json' | null>(null)
   const [promptCopied, setPromptCopied] = useState<'csv' | 'json' | null>(null)
-  const [instruction, setInstruction] = useState('generate an executive summary grouped by project')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [instruction, setInstruction] = useState('genera un resumen ejecutivo agrupado por proyecto')
   const [tab, setTab] = useState<'export' | 'import' | 'prompt'>('export')
   const [importText, setImportText] = useState('')
   const [importResult, setImportResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -40,41 +41,70 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
     setImportResult(validateImportText(importText))
   }
 
+  const selectedProjectObj = projects?.find((p: any) => p.id === selectedProjectId)
+
   const SCHEMA_FIELDS = [
-    { name: 'title', type: 'string', desc: 'Título de la tarea' },
-    { name: 'project', type: 'string', desc: 'Nombre del proyecto' },
-    { name: 'status', type: 'string', desc: 'Estado (todo, progress, review, done, blocked)' },
-    { name: 'tag', type: 'string', desc: 'Etiqueta (feature, backend, frontend, design, qa, planning, idea, bug)' },
-    { name: 'priority', type: 'string', desc: 'Prioridad (low, med, high)' },
-    { name: 'assignees', type: 'string', desc: 'Nombres de asignados (separados por coma)' },
-    { name: 'due', type: 'string', desc: 'Fecha de vencimiento (YYYY-MM-DD) o —' },
-    { name: 'subtasks', type: 'string', desc: 'Progreso de subtareas (ej: 2/5)' },
-    { name: 'comments', type: 'number', desc: 'Número de comentarios' },
-    { name: 'created', type: 'string', desc: 'Fecha de creación' },
+    { name: 'title', type: 'string', desc: 'Task title' },
+    { name: 'project', type: 'string', desc: 'Project name' },
+    { name: 'project_id', type: 'string', desc: 'Project UUID' },
+    { name: 'status', type: 'string', desc: 'One of: todo, progress, review, done, blocked' },
+    { name: 'tag', type: 'string', desc: 'One of: feature, backend, frontend, design, qa, planning, idea, bug' },
+    { name: 'priority', type: 'string', desc: 'One of: low, med, high' },
+    { name: 'assignees', type: 'string', desc: 'Assignee names separated by commas, or —' },
+    { name: 'due', type: 'string', desc: 'Due date in YYYY-MM-DD format, or —' },
+    { name: 'subtasks', type: 'string', desc: 'Subtask progress in completed/total format, for example 2/5' },
+    { name: 'comments', type: 'number', desc: 'Number of comments' },
+    { name: 'created', type: 'string', desc: 'ISO 8601 datetime string' },
   ]
 
   function schemaToMarkdown() {
-    return SCHEMA_FIELDS.map(f => `- \`${f.name}\` (${f.type}): ${f.desc}`).join('\n')
+    return SCHEMA_FIELDS.map(f => `* \`${f.name}\` (${f.type}): ${f.desc}`).join('\n')
   }
 
   function generatePrompt() {
-    const sample = rows.slice(0, 2)
-    return [
-      `You are an assistant that generates test data for a task management dashboard.`,
+    const projectSection = selectedProjectObj
+      ? `\n\n## Project Context\n\nAll tasks belong to the project "${selectedProjectObj.name}" (ID: ${selectedProjectObj.id}). Use this project name and ID in every record.\n`
+      : ''
+
+    const requirements = [
+      `[Complete this section with the specific requirements for the data you want to generate.]`,
       ``,
+      `Examples of requirements you may define:`,
+      `* Number of records to generate`,
+      `* Language of the task titles`,
+      `* Type of projects to include`,
+      `* Type of team or business context`,
+      `* Date range`,
+      `* Distribution of statuses`,
+      `* Distribution of priorities`,
+      `* Whether tasks should be generic or domain-specific`,
+      `* Whether assignees should be real names, fictional names, roles, or —`,
+      `* Whether due dates should be mostly present or mostly empty`,
+      `* Whether blocked tasks should include an understandable blocker`,
+      `* Whether completed tasks should have completed subtasks`,
+    ].join('\n')
+
+    return [
+      `You are an assistant that generates realistic data for a task management dashboard.`,
+      ``,
+      `## Context`,
+      ``,
+      `The dashboard is used to manage projects, tasks, responsibilities, progress, and operational work. The generated data should feel realistic and useful for populating a real dashboard, not like placeholder or dummy data.`,
+      projectSection,
       `## Data Schema`,
       ``,
-      `Each record must include these fields:`,
+      `Each record must include exactly these fields:`,
       schemaToMarkdown(),
       ``,
-      `## Output Format`,
-      `Return ONLY the content in the requested format, no explanations, no markdown around it.`,
-      ``,
-      `## Instruction`,
+      `## Requirements`,
       instruction,
       ``,
-      `## Example of a valid row`,
-      JSON.stringify(sample[0] || SCHEMA_FIELDS.reduce((acc, f) => ({ ...acc, [f.name]: f.type === 'number' ? 0 : '—' }), {}), null, 2),
+      `## Output Format`,
+      ``,
+      `Return a valid JSON array.`,
+      `Each object must use the exact columns from the schema.`,
+      `Return ONLY the JSON content.`,
+      `Do not include markdown, comments, explanations, or extra text.`,
     ].join('\n')
   }
 
@@ -179,7 +209,7 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
               {tab === 'prompt' && (
                 <>
                   <div className="text-[13px] text-muted space-y-2">
-                    <p>Ask an AI to generate test data in CSV or JSON following the schema below.</p>
+                    <p>Pide a la IA que genere datos realistas en CSV o JSON siguiendo el schema de abajo.</p>
                     <div className="flex items-start gap-2 text-[12px] bg-amber-50 rounded-md p-3 text-amber-800">
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                       <span>Los prompts en inglés son más efectivos y gastan menos tokens. El schema y ejemplos ya están en inglés.</span>
@@ -188,26 +218,25 @@ export function ExportButton({ data, projects, profiles, filename = 'export', vi
                       <strong>Flujo:</strong> Copia el prompt → pégalo en la IA → ella responde con datos → copia esa respuesta en la pestaña <strong>Importar</strong> para validar.
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(['csv', 'json'] as const).map(format => (
-                      <button key={format} type="button" onClick={() => {
-                        const fmt = format === 'csv' ? 'CSV' : 'JSON'
-                        const base = generatePrompt()
-                        const extra = `\n\nReturn the data in ${fmt} format with the exact columns from the schema. Only the ${fmt} content, no markdown, no explanations.`
-                        navigator.clipboard.writeText(base + extra).then(() => {
-                          setPromptCopied(format)
-                          setTimeout(() => setPromptCopied(null), 2000)
-                        })
-                      }}
-                        className="flex flex-col items-center justify-center gap-2 p-5 rounded-lg border border-line2 hover:border-zred/40 hover:bg-tint/30 transition-all text-center">
-                        <div className="font-semibold text-[14px] text-carbon">
-                          {format === 'csv' ? 'CSV' : 'JSON'}
-                        </div>
-                        <div className="text-[11px] text-muted">Prompt para generar {format.toUpperCase()}</div>
-                        {promptCopied === format && <div className="text-[11px] text-zred font-medium">✓ Copiado</div>}
-                      </button>
-                    ))}
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">Proyecto (opcional)</div>
+                    <select value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border border-line text-[13px] outline-none focus:border-zred bg-white appearance-none cursor-pointer">
+                      <option value="">— Sin proyecto específico —</option>
+                      {projects?.map((p: any) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
                   </div>
+                  <Button variant="primary" size="md" onClick={() => {
+                    navigator.clipboard.writeText(generatePrompt()).then(() => {
+                      setPromptCopied('json')
+                      setTimeout(() => setPromptCopied(null), 2000)
+                    })
+                  }} className="w-full">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    {promptCopied === 'json' ? '✓ Copiado al portapapeles' : 'Copiar prompt a la IA'}
+                  </Button>
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1.5">¿Qué datos quieres que genere?</div>
                     <input value={instruction} onChange={(e) => setInstruction(e.target.value)}
